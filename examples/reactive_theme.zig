@@ -17,12 +17,27 @@ const WNDCLASS = win32.ui.windows_and_messaging.WNDCLASSA;
 const WINDOW_STYLE = win32.ui.windows_and_messaging.WINDOW_STYLE;
 const WNDCLASS_STYLES = win32.ui.windows_and_messaging.WNDCLASS_STYLES;
 
+const isLightTheme = @import("utils").theme.isLightTheme;
+
+var brush: ?win32.graphics.gdi.HGDIOBJ = undefined;
+
 pub fn main() !void {
     const class: [:0]align(1) const u8 = "win-win-simple-1";
     const title: [:0]const u8 = "title goes here";
 
     const instance = GetModuleHandle(null);
-    const wnd_class = WNDCLASS{ .lpszClassName = class.ptr, .style = WNDCLASS_STYLES{ .HREDRAW = 1, .VREDRAW = 1 }, .cbClsExtra = 0, .cbWndExtra = 0, .hIcon = null, .hCursor = null, .hbrBackground = win32.graphics.gdi.GetStockObject(win32.graphics.gdi.BLACK_BRUSH), .lpszMenuName = null, .hInstance = instance, .lpfnWndProc = wndProc };
+    const wnd_class = WNDCLASS{
+        .lpszClassName = class.ptr,
+        .style = WNDCLASS_STYLES{ .HREDRAW = 1, .VREDRAW = 1 },
+        .cbClsExtra = 0,
+        .cbWndExtra = 0,
+        .hIcon = null,
+        .hCursor = null,
+        .hbrBackground = null,
+        .lpszMenuName = null,
+        .hInstance = instance,
+        .lpfnWndProc = wndProc,
+    };
 
     const result = RegisterClass(&wnd_class);
     if (result == 0) {
@@ -48,10 +63,16 @@ pub fn main() !void {
         return;
     };
 
+    const lightTheme = try isLightTheme();
+    brush = win32.graphics.gdi.GetStockObject(if (lightTheme) win32.graphics.gdi.LTGRAY_BRUSH else win32.graphics.gdi.BLACK_BRUSH);
+    defer {
+        if (brush) |hbrush| _ = win32.graphics.gdi.DeleteObject(hbrush);
+    }
+
     _ = win32.graphics.dwm.DwmSetWindowAttribute(
         handle,
         win32.graphics.dwm.DWMWA_USE_IMMERSIVE_DARK_MODE,
-        &if (try isLightMode()) win32.zig.FALSE else win32.zig.TRUE,
+        &if (lightTheme) win32.zig.FALSE else win32.zig.TRUE,
         @sizeOf(foundation.BOOL),
     );
     _ = ShowWindow(handle, windows_and_messaging.SW_SHOWDEFAULT);
@@ -74,51 +95,56 @@ fn wndProc(
         windows_and_messaging.WM_DESTROY => {
             windows_and_messaging.PostQuitMessage(0);
         },
+        windows_and_messaging.WM_ERASEBKGND => {
+            const hdc: win32.graphics.gdi.HDC = @ptrFromInt(wparam);
+            var rect: win32.foundation.RECT = undefined;
+            _ = windows_and_messaging.GetClientRect(hwnd, &rect);
+
+            if (brush) |hbrush| {
+                _ = win32.graphics.gdi.FillRect(hdc, &rect, hbrush);
+            }
+            return 1;
+        },
         windows_and_messaging.WM_SETTINGCHANGE => {
+            // This message is sent when a setting has changed and the OS
+            // notifies the application/window. The lpaaram is a pointer to
+            // a string representing what was changed. This can be a path to
+            // the registry key or a constant like `ImmersiveColorSet`, `Policy`, etc.
             const name: [*:0]const u8 = @ptrFromInt(@as(usize, @bitCast(lparam)));
 
+            // In this case name should equal "ImmersiveColorSet"
+            // which indicates that the system theme has changed in some way.
             const isImmersiveColorSet = for (0..18) |i| {
                 if (name[i] != ImmersiveColorSet[i]) break false;
             } else true;
 
             if (isImmersiveColorSet) {
-                if (isLightMode()) |lightMode| {
+                // Get whether the system is using a light theme
+                // Computer\\HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize -> AppsUseLightTheme
+                if (isLightTheme()) |lightTheme| {
+                    // Update the window immersive dark mode flag
+                    // based on the system settings
                     _ = win32.graphics.dwm.DwmSetWindowAttribute(
                         hwnd,
                         win32.graphics.dwm.DWMWA_USE_IMMERSIVE_DARK_MODE,
-                        &if (lightMode) win32.zig.FALSE else win32.zig.TRUE,
+                        &if (lightTheme) win32.zig.FALSE else win32.zig.TRUE,
                         @sizeOf(foundation.BOOL),
                     );
+
+                    if (brush) |hbrush| _ = win32.graphics.gdi.DeleteObject(hbrush);
+                    brush = win32.graphics.gdi.GetStockObject(if (lightTheme) win32.graphics.gdi.LTGRAY_BRUSH else win32.graphics.gdi.BLACK_BRUSH);
+                    _ = win32.graphics.gdi.RedrawWindow(hwnd, null, null, win32.graphics.gdi.REDRAW_WINDOW_FLAGS{ .INVALIDATE = 1, .ERASE = 1 });
+
                 } else |err| {
                     std.debug.print("{}", .{err});
                 }
+                return 1;
+            } else {
+                return windows_and_messaging.DefWindowProcA(hwnd, uMsg, wparam, lparam);
             }
         },
         else => return windows_and_messaging.DefWindowProcA(hwnd, uMsg, wparam, lparam),
     }
 
     return 0;
-}
-
-fn isLightMode() error{RegRead, RegNotFound, SystemError}!bool {
-    var data_type: u32 = 0;
-    var data: [4:0]u8 = [_:0]u8{0} ** 4;
-    var length: u32 = 4;
-
-    const code = win32.system.registry.RegGetValueA(
-        win32.system.registry.HKEY_CURRENT_USER,
-        "Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
-        "SystemUsesLightTheme",
-        win32.system.registry.RRF_RT_REG_DWORD,
-        &data_type,
-        @ptrCast(@alignCast(&data)),
-        &length,
-    );
-
-    switch (code) {
-        .NO_ERROR => return data[0] == 1,
-        .ERROR_MORE_DATA => return error.RegRead,
-        .ERROR_FILE_NOT_FOUND => return error.RegNotFound,
-        else => return error.SystemError,
-    }
 }

@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const NAME: []const u8 = "winrt";
+const NAME: []const u8 = "utils";
 
 const ModuleMap = std.meta.Tuple(&[_]type{ []const u8, *std.Build.Module });
 const Example = struct {
