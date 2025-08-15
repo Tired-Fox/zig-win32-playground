@@ -84,8 +84,8 @@ pub const UIColorType = enum(i32) {
     Complement = 9,
 };
 
-pub const UISettings = struct {
-    pub const VTable = struct {
+pub const UISettings = extern struct {
+    pub const VTable = extern struct {
         base: IInspectable.VTable,
 
         HandPreference: *const fn(*UISettings, *HandPreference) callconv(.C) HRESULT,
@@ -106,7 +106,7 @@ pub const UISettings = struct {
         TextScaleFactorChanged: *const fn(*UISettings, *IInspectable, *i64) callconv(.C) HRESULT,
         RemoveTextScaleFactorChanged: *const fn(*UISettings, i64) callconv(.C) HRESULT,
 
-        GetColorValue: *const fn(*UISettings, UIColorType) callconv(.C) Color,
+        GetColorValue: *const fn(*UISettings, UIColorType, *Color) callconv(.C) HRESULT,
         ColorValuesChanged: *const fn(*UISettings, *IInspectable, *i64) callconv(.C) HRESULT,
         RemoveColorValuesChanged: *const fn(*UISettings, i64) callconv(.C) HRESULT,
 
@@ -144,14 +144,20 @@ pub const UISettings = struct {
     }
 
     pub fn getColorValue(self: *@This(), color_type: UIColorType) !Color {
-        const color = self.vtable.GetColorValue(self, color_type);
-        std.debug.print("BEFORE: {any}\n", .{color});
+        var color: Color = .{
+            .A = 0,
+            .R = 0,
+            .G = 0,
+            .B = 0,
+        };
+        const code = self.vtable.GetColorValue(self, color_type, &color);
+        std.debug.print("[0x{X}]: {any}\n", .{code, color});
         return color;
     }
 };
 
-pub const IGenericFactory = struct {
-    pub const VTable = struct {
+pub const IGenericFactory = extern struct {
+    pub const VTable = extern struct {
         base: IInspectable.VTable,
         ActivateInstance: *const fn(*IGenericFactory, **anyopaque) callconv(.C) HRESULT
     };
