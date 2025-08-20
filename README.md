@@ -4,6 +4,7 @@
 
 - https://docs.rs/crate/windows-core/latest/source/
     - https://docs.rs/crate/windows-core/latest/source/src/imp/factory_cache.rs
+    - https://docs.rs/crate/windows/latest/source/src/Windows/UI/ViewManagement/mod.rs
 
 + Notifications
     + https://github.com/iKineticate/win-toast-notify
