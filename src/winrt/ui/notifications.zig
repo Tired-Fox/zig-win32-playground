@@ -177,6 +177,54 @@ pub const IToastNotificationFactory = extern struct {
     };
 };
 
+// // ToastNotifier (Show/Hide)
+// pub const IToastNotifierVTable = extern struct {
+//     // IInspectable
+//     QueryInterface: *const fn(*anyopaque, *const GUID, *?*anyopaque) callconv(.C) HRESULT,
+//     AddRef:         *const fn(*anyopaque) callconv(.C) u32,
+//     Release:        *const fn(*anyopaque) callconv(.C) u32,
+//     GetIids:             *const fn(*anyopaque, *u32, *?*GUID) callconv(.C) HRESULT,
+//     GetRuntimeClassName: *const fn(*anyopaque, *HSTRING) callconv(.C) HRESULT,
+//     GetTrustLevel:       *const fn(*anyopaque, *i32) callconv(.C) HRESULT,
+//
+//     Show: *const fn(self:*anyopaque, toast: *IToastNotification) callconv(.C) HRESULT,
+//     // Hide: *const fn(self:*anyopaque, toast: *IToastNotification) callconv(.C) HRESULT,
+// };
+// pub const IToastNotifier = extern struct { lpVtbl: *const IToastNotifierVTable; };
+//
+// const RC_ToastNotificationManager  = "Windows.UI.Notifications.ToastNotificationManager";
+// // ToastNotificationManager statics
+// // ToastNotificationManager is static → RoGetActivationFactory.
+// pub const IToastNotificationManagerStaticsVTable = extern struct {
+//     // IInspectable
+//     QueryInterface: *const fn(*anyopaque, *const GUID, *?*anyopaque) callconv(.C) HRESULT,
+//     AddRef:         *const fn(*anyopaque) callconv(.C) u32,
+//     Release:        *const fn(*anyopaque) callconv(.C) u32,
+//     GetIids:             *const fn(*anyopaque, *u32, *?*GUID) callconv(.C) HRESULT,
+//     GetRuntimeClassName: *const fn(*anyopaque, *HSTRING) callconv(.C) HRESULT,
+//     GetTrustLevel:       *const fn(*anyopaque, *i32) callconv(.C) HRESULT,
+//
+//     // For packaged apps: CreateToastNotifier(out)
+//     CreateToastNotifier: *const fn(self:*anyopaque, out: *?*IToastNotifier) callconv(.C) HRESULT,
+//
+//     // (Often also GetTemplateContent, etc. — add if you want)
+// };
+// pub const IToastNotificationManagerStatics = extern struct { lpVtbl: *const IToastNotificationManagerStaticsVTable; };
+//
+// // Desktop/unpackaged overload lives on *Statics2*: CreateToastNotifierWithId(appId, out)
+// pub const IToastNotificationManagerStatics2VTable = extern struct {
+//     // IInspectable
+//     QueryInterface: *const fn(*anyopaque, *const GUID, *?*anyopaque) callconv(.C) HRESULT,
+//     AddRef:         *const fn(*anyopaque) callconv(.C) u32,
+//     Release:        *const fn(*anyopaque) callconv(.C) u32,
+//     GetIids:             *const fn(*anyopaque, *u32, *?*GUID) callconv(.C) HRESULT,
+//     GetRuntimeClassName: *const fn(*anyopaque, *HSTRING) callconv(.C) HRESULT,
+//     GetTrustLevel:       *const fn(*anyopaque, *i32) callconv(.C) HRESULT,
+//
+//     CreateToastNotifierWithId: *const fn(self:*anyopaque, appId: HSTRING, out: *?*IToastNotifier) callconv(.C) HRESULT,
+// };
+// pub const IToastNotificationManagerStatics2 = extern struct { lpVtbl: *const IToastNotificationManagerStatics2VTable; };
+
 pub const ToastNotificationPriority = enum(i32) {
     default = 0,
     high = 1,
@@ -231,6 +279,7 @@ pub const ToastNotification = extern struct {
         if (factory.vtable.CreateToastNotification(@ptrCast(factory), xml, &result) < S_OK) {
             return error.ToastCreationFailure;
         }
-        return @ptrCast(@alignCast(inner));
+
+        return result;
     }
 };

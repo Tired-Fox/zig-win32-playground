@@ -136,10 +136,10 @@ pub fn TypedEventHandler(I: type, R: type) type {
 
         vtable: *const ITypedEventHandler.VTable,
         refs: std.atomic.Value(u32),
-        cb: *const fn (sender: *I, context: ?*anyopaque) callconv(.C) void,
+        cb: *const fn (context: ?*anyopaque, sender: *I, args: *R) callconv(.C) void,
         context: ?*anyopaque = null,
 
-        pub fn init(callback: *const fn (sender: *I, context: ?*anyopaque) callconv(.C) void) !@This() {
+        pub fn init(callback: *const fn (context: ?*anyopaque, sender: *I, args: *R) callconv(.C) void) !@This() {
             return .{
                 .vtable = &VTABLE,
                 .refs = std.atomic.Value(u32).init(1),
@@ -147,7 +147,7 @@ pub fn TypedEventHandler(I: type, R: type) type {
             };
         }
 
-        pub fn initWithState(callback: *const fn (sender: *I, context: ?*anyopaque) callconv(.C) void, context: anytype) !@This() {
+        pub fn initWithState(callback: *const fn (context: ?*anyopaque, sender: *I, args: *R) callconv(.C) void, context: anytype) !@This() {
             return .{
                 .vtable = &VTABLE,
                 .refs = std.atomic.Value(u32).init(1),
@@ -185,11 +185,11 @@ pub fn TypedEventHandler(I: type, R: type) type {
         // Invoke(sender, args) - Convert sender to `I` and pass it to the stored callback
         //
         // This will always return `S_OK` because event callbacks shouldn't fail
-        fn invoke(self: *ITypedEventHandler, sender: *anyopaque, _: *anyopaque) callconv(.C) HRESULT {
+        fn invoke(self: *ITypedEventHandler, sender: *anyopaque, args: *anyopaque) callconv(.C) HRESULT {
             const this: *@This() = @ptrCast(@alignCast(self));
             // TODO: Allow user to store a pointer to some state in this delegate so it can be
             //       passed to the callback
-            this.cb(@ptrCast(@alignCast(sender)), this.context);
+            this.cb(this.context, @ptrCast(@alignCast(sender)), @ptrCast(@alignCast(args)));
             return S_OK;
         }
     };
