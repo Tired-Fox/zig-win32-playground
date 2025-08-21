@@ -1,43 +1,100 @@
 const std = @import("std");
 const win32 = @import("win32");
 
-pub const IInspectable = win32.system.win_rt.IInspectable;
-pub const IID_IInspectable = win32.system.win_rt.IID_IInspectable;
-pub const IUnknown = win32.system.com.IUnknown;
-pub const IID_IUnknown = win32.system.com.IID_IUnknown;
-pub const IID_IAgileObject = win32.system.com.IID_IAgileObject;
-pub const HRESULT = win32.foundation.HRESULT;
-pub const Guid = win32.zig.Guid;
-pub const HSTRING = win32.system.win_rt.HSTRING;
-pub const TrustLevel = win32.system.win_rt.TrustLevel;
-const WindowsCreateString = win32.system.win_rt.WindowsCreateString;
-const WindowsDeleteString = win32.system.win_rt.WindowsDeleteString;
-const RoGetActivationFactory = win32.system.win_rt.RoGetActivationFactory;
-const RoInitialize = win32.system.win_rt.RoInitialize;
-const RoActivateInstance = win32.system.win_rt.RoActivateInstance;
-const CoIncrementMTAUsage = win32.system.com.CoIncrementMTAUsage;
-
-// https://learn.microsoft.com/en-us/windows/win32/api/rometadataresolution/nf-rometadataresolution-rogetmetadatafile
-// https://learn.microsoft.com/en-us/windows/win32/api/rometadata/nf-rometadata-metadatagetdispenser
-pub extern "api-ms-win-core-winrt-rometadataresolution-l1-1-0" fn RoGetMetaDataFile (
-    name: HSTRING,
-    dispenser: ?*IMetaDataDispenserEx,
-    file_path: ?HSTRING,
-    import: ?**IMetaDataImport2,
-    type_def_token: ?*mdTypeDef,
-) callconv(@import("std").os.windows.WINAPI) HRESULT;
-
-pub const CoInitializeEx = win32.system.com.CoInitializeEx;
-pub const CLSCTX_ALL = win32.system.com.CLSCTX_ALL;
-pub const CoUninitialize = win32.system.com.CoUninitialize;
-const CoTaskMemFree = win32.system.com.CoTaskMemFree;
-const CoCreateInstance = win32.system.com.CoCreateInstance;
-
 pub const S_OK: u32 = 0;
 pub const CO_E_NOTINITIALIZED: u32 = 0x800401F0;
 pub const E_ACCESSDENIED: u32 = 0x80070005;
 pub const E_OUTOFMEMORY: u32 = 0x8007000E;
 pub const REGDB_E_CLASSNOTREG: u32 = 0x80040154;
+pub const CLSCTX_ALL = win32.system.com.CLSCTX_ALL;
+pub const IID_IInspectable = win32.system.win_rt.IID_IInspectable;
+pub const IID_IUnknown = win32.system.com.IID_IUnknown;
+pub const IID_IAgileObject = win32.system.com.IID_IAgileObject;
+pub const IID_IMarshal = win32.system.com.marshal.IID_IMarshal;
+
+pub const IInspectable = win32.system.win_rt.IInspectable;
+pub const IUnknown = win32.system.com.IUnknown;
+pub const HRESULT = win32.foundation.HRESULT;
+pub const HSTRING = win32.system.win_rt.HSTRING;
+pub const Guid = win32.zig.Guid;
+pub const TrustLevel = win32.system.win_rt.TrustLevel;
+
+const WindowsCreateString = win32.system.win_rt.WindowsCreateString;
+const WindowsDeleteString = win32.system.win_rt.WindowsDeleteString;
+const CoCreateInstance = win32.system.com.CoCreateInstance;
+const CoIncrementMTAUsage = win32.system.com.CoIncrementMTAUsage;
+pub const CoInitializeEx = win32.system.com.CoInitializeEx;
+const CoTaskMemFree = win32.system.com.CoTaskMemFree;
+pub const CoUninitialize = win32.system.com.CoUninitialize;
+const RoGetActivationFactory = win32.system.win_rt.RoGetActivationFactory;
+const RoInitialize = win32.system.win_rt.RoInitialize;
+const RoActivateInstance = win32.system.win_rt.RoActivateInstance;
+
+/// Compute the GUID for a WinRT parameterized type from its canonical signature
+/// using the WinRT "pinterface" namespace and RFC-4122 UUIDv5 (SHA-1).
+///
+/// # Example
+/// + `pinterface({<PIID-of-open-generic>}; <arg1-signature>; <arg2-signature>; ...)`
+///   + `rc(Namespace.Type;{<IID-of-default-interface>})` is the signature for a runtime class type argument
+///   + `iinspectable` is the signature token for IInspectable
+pub fn guidFromWinRTSignature(signature: []const u8) Guid {
+    // WinRT "pinterface" namespace UUID in big-endian (RFC-4122 wire order):
+    // 11F47AD5-7B73-42C0-ABAE-878B1E16ADEE
+    const ns_be: [16]u8 = .{
+        0x11, 0xF4, 0x7A, 0xD5, 0x7B, 0x73, 0x42, 0xC0,
+        0xAB, 0xAE, 0x87, 0x8B, 0x1E, 0x16, 0xAD, 0xEE,
+    };
+
+    var hasher = std.crypto.hash.Sha1.init(.{});
+    hasher.update(&ns_be);
+    hasher.update(signature);
+
+    var digest: [20]u8 = undefined;
+    hasher.final(&digest);
+
+    var bytes = digest[0..16].*; // first 16 bytes
+    // RFC-4122 fixes:
+    bytes[6] = (bytes[6] & 0x0F) | 0x50; // version = 5
+    bytes[8] = (bytes[8] & 0x3F) | 0x80; // variant = RFC-4122
+
+    return Guid{ .Bytes = bytes };
+}
+
+/// GUID values must be wire order when matching with GUID passed in from windows
+///
+/// This means the first 4 + 2 + 2 bytes are big endian and the rest are little endian.
+/// + First 4 are reversed for the first value
+/// + Next 2 bytes are reversed for the second value
+/// + Next 2 bytes are reversed for the third value
+/// + Remaining 8 bytes are kept as is for the fourth value
+pub fn wiredGuid(iid: *const Guid) Guid {
+    const bytes = iid.Bytes;
+    return .{
+        .Bytes = [16]u8{
+            bytes[3],  bytes[2],  bytes[1],  bytes[0],
+            bytes[5],  bytes[4],  bytes[7],  bytes[6],
+            bytes[8],  bytes[9],  bytes[10], bytes[11],
+            bytes[12], bytes[13], bytes[14], bytes[15],
+        },
+    };
+}
+
+/// helper to format a GUID as dashed lowercase hex
+///
+/// Buffer must be 36+ bytes
+pub fn guidToString(g: *const Guid, buf: []u8) std.fmt.BufPrintError![]u8 {
+    const bytes = g.Bytes;
+    return try std.fmt.bufPrint(
+        buf,
+        "{X:0>2}{X:0>2}{X:0>2}{X:0>2}-{X:0>2}{X:0>2}-{X:0>2}{X:0>2}-{X:0>2}{X:0>2}-{X:0>2}{X:0>2}{X:0>2}{X:0>2}{X:0>2}{X:0>2}",
+        .{
+            bytes[0],  bytes[1],  bytes[2],  bytes[3],
+            bytes[4],  bytes[5],  bytes[6],  bytes[7],
+            bytes[8],  bytes[9],  bytes[10], bytes[11],
+            bytes[12], bytes[13], bytes[14], bytes[15],
+        },
+    );
+}
 
 pub const Error = error{
     /// No interface found for the given action, or the given class does not implement IInspectable
@@ -109,9 +166,8 @@ pub const IUISettings = extern struct {
         return self.vtable.QueryInterface(@ptrCast(self), riid, object);
     }
 
-    pub var TYPE_NAME: [37:0]u16 = [_:0]u16{'W','i','n','d','o','w','s','.','U','I','.','V','i','e','w','M','a','n','a','g','e','m','e','n','t','.','U','I','S','e','t','t','i','n','g','s',0};
-    pub const RUNTIME_NAME: [:0]const u16 = TYPE_NAME[0..];
-    pub const IID: Guid = Guid.initString("85361600-1c63-4627-bcb1-3a89e0bc9c55");
+    pub const GUID: []const u8 = "85361600-1c63-4627-bcb1-3a89e0bc9c55";
+    pub const IID: Guid = Guid.initString(GUID);
     pub const VTable = extern struct {
         QueryInterface: *const fn (self: *const anyopaque, riid: *const Guid, ppvObject: **anyopaque) callconv(.C) HRESULT,
         AddRef: *const fn (self: *const anyopaque) callconv(.C) u32,
@@ -140,7 +196,7 @@ pub const IUISettings = extern struct {
 pub const IUISettings2 = extern struct {
     vtable: *const VTable,
 
-    pub var TYPE_NAME: [37:0]u16 = [_:0]u16{'W','i','n','d','o','w','s','.','U','I','.','V','i','e','w','M','a','n','a','g','e','m','e','n','t','.','U','I','S','e','t','t','i','n','g','s',0};
+    pub var TYPE_NAME: [37:0]u16 = [_:0]u16{ 'W', 'i', 'n', 'd', 'o', 'w', 's', '.', 'U', 'I', '.', 'V', 'i', 'e', 'w', 'M', 'a', 'n', 'a', 'g', 'e', 'm', 'e', 'n', 't', '.', 'U', 'I', 'S', 'e', 't', 't', 'i', 'n', 'g', 's', 0 };
     pub const RUNTIME_NAME: [:0]const u16 = TYPE_NAME[0..];
     pub const IID: Guid = Guid.initString("bad82401-2721-44f9-bb91-2bb228be442f");
     pub const VTable = extern struct {
@@ -169,7 +225,7 @@ pub const IUISettings3 = extern struct {
         return result;
     }
 
-    pub fn colorValuesChanged(self: *const @This(), handler: *TypedEventHandler(IUISettings3)) !i64 {
+    pub fn colorValuesChanged(self: *const @This(), handler: *TypedEventHandler(UISettings, IInspectable)) !i64 {
         var result: i64 = 0;
         const code = self.vtable.ColorValuesChanged(@ptrCast(self), @ptrCast(handler), &result);
         if (code < 0) {
@@ -185,7 +241,7 @@ pub const IUISettings3 = extern struct {
         }
     }
 
-    pub var TYPE_NAME: [37:0]u16 = [_:0]u16{'W','i','n','d','o','w','s','.','U','I','.','V','i','e','w','M','a','n','a','g','e','m','e','n','t','.','U','I','S','e','t','t','i','n','g','s',0};
+    pub var TYPE_NAME: [37:0]u16 = [_:0]u16{ 'W', 'i', 'n', 'd', 'o', 'w', 's', '.', 'U', 'I', '.', 'V', 'i', 'e', 'w', 'M', 'a', 'n', 'a', 'g', 'e', 'm', 'e', 'n', 't', '.', 'U', 'I', 'S', 'e', 't', 't', 'i', 'n', 'g', 's', 0 };
     pub const RUNTIME_NAME: [:0]const u16 = TYPE_NAME[0..];
     pub const IID: Guid = Guid.initString("03021be4-5254-4781-8194-5168f7d06d7b");
     pub const VTable = extern struct {
@@ -206,7 +262,7 @@ pub const IUISettings3 = extern struct {
 pub const IUISettings4 = extern struct {
     vtable: *const VTable,
 
-    pub var TYPE_NAME: [37:0]u16 = [_:0]u16{'W','i','n','d','o','w','s','.','U','I','.','V','i','e','w','M','a','n','a','g','e','m','e','n','t','.','U','I','S','e','t','t','i','n','g','s',0};
+    pub var TYPE_NAME: [37:0]u16 = [_:0]u16{ 'W', 'i', 'n', 'd', 'o', 'w', 's', '.', 'U', 'I', '.', 'V', 'i', 'e', 'w', 'M', 'a', 'n', 'a', 'g', 'e', 'm', 'e', 'n', 't', '.', 'U', 'I', 'S', 'e', 't', 't', 'i', 'n', 'g', 's', 0 };
     pub const RUNTIME_NAME: [:0]const u16 = TYPE_NAME[0..];
     pub const IID: Guid = Guid.initString("52bb3002-919b-4d6b-9b78-8dd66ff4b93b");
     pub const VTable = extern struct {
@@ -227,7 +283,7 @@ pub const IUISettings4 = extern struct {
 pub const IUISettings5 = extern struct {
     vtable: *const VTable,
 
-    pub var TYPE_NAME: [37:0]u16 = [_:0]u16{'W','i','n','d','o','w','s','.','U','I','.','V','i','e','w','M','a','n','a','g','e','m','e','n','t','.','U','I','S','e','t','t','i','n','g','s',0};
+    pub var TYPE_NAME: [37:0]u16 = [_:0]u16{ 'W', 'i', 'n', 'd', 'o', 'w', 's', '.', 'U', 'I', '.', 'V', 'i', 'e', 'w', 'M', 'a', 'n', 'a', 'g', 'e', 'm', 'e', 'n', 't', '.', 'U', 'I', 'S', 'e', 't', 't', 'i', 'n', 'g', 's', 0 };
     pub const RUNTIME_NAME: [:0]const u16 = TYPE_NAME[0..];
     pub const IID: Guid = Guid.initString("5349d588-0cb5-5f05-bd34-706b3231f0bd");
     pub const VTable = extern struct {
@@ -248,7 +304,7 @@ pub const IUISettings5 = extern struct {
 pub const IUISettings6 = extern struct {
     vtable: *const VTable,
 
-    pub var TYPE_NAME: [37:0]u16 = [_:0]u16{'W','i','n','d','o','w','s','.','U','I','.','V','i','e','w','M','a','n','a','g','e','m','e','n','t','.','U','I','S','e','t','t','i','n','g','s',0};
+    pub var TYPE_NAME: [37:0]u16 = [_:0]u16{ 'W', 'i', 'n', 'd', 'o', 'w', 's', '.', 'U', 'I', '.', 'V', 'i', 'e', 'w', 'M', 'a', 'n', 'a', 'g', 'e', 'm', 'e', 'n', 't', '.', 'U', 'I', 'S', 'e', 't', 't', 'i', 'n', 'g', 's', 0 };
     pub const RUNTIME_NAME: [:0]const u16 = TYPE_NAME[0..];
     pub const IID: Guid = Guid.initString("aef19bd7_fe31_5a04_ada4_469aaec6dfa9");
     pub const VTable = extern struct {
@@ -267,25 +323,87 @@ pub const IUISettings6 = extern struct {
     };
 };
 
+pub const UISettings = extern struct {
+    pub const TYPE_NAME: []const u8 = "Windows.UI.ViewManagement.UISettings";
+    pub const SIGNATURE: []const u8 = std.fmt.comptimePrint("rc({s};{{{s}}})", .{ TYPE_NAME, IUISettings.GUID });
+
+    pub const RUNTIME_NAME: [:0]const u16 = std.unicode.utf8ToUtf16LeStringLiteral(std.fmt.comptimePrint("{s}\x00", .{TYPE_NAME}));
+
+    var Factory: FactoryCache = .{};
+
+    vtable: *const IUISettings.VTable,
+
+    pub fn init() anyerror!*@This() {
+        const inner: *IUISettings = try @This().Factory.call(
+            IGenericFactory,
+            IUISettings,
+            @This().RUNTIME_NAME,
+        );
+        return @ptrCast(@alignCast(inner));
+    }
+
+    pub fn deinit(self: *const @This()) u32 {
+        return self.release();
+    }
+
+    pub fn release(self: *const @This()) u32 {
+        const this: *const IUISettings = @ptrCast(@alignCast(self));
+        return this.release();
+    }
+
+    pub fn getColorValue(self: *const @This(), color_type: UIColorType) !Color {
+        const this: *const IUISettings = @ptrCast(@alignCast(self));
+
+        var instance: *IUISettings3 = undefined;
+        if (this.query_interface(&IUISettings3.IID, @ptrCast(&instance)) < 0) {
+            return error.NoInterface;
+        }
+
+        return instance.getColorValue(color_type);
+    }
+
+    pub fn colorValuesChanged(self: *const @This(), handler: *TypedEventHandler(UISettings, IInspectable)) !i64 {
+        const this: *const IUISettings = @ptrCast(@alignCast(self));
+
+        var instance: *IUISettings3 = undefined;
+        if (this.query_interface(&IUISettings3.IID, @ptrCast(&instance)) < 0) {
+            return error.NoInterface;
+        }
+
+        return instance.colorValuesChanged(handler);
+    }
+
+    pub fn removeColorValuesChanged(self: *const @This(), id: i64) !void {
+        const this: *const IUISettings = @ptrCast(@alignCast(self));
+
+        var instance: *IUISettings3 = undefined;
+        if (this.query_interface(&IUISettings3.IID, @ptrCast(&instance)) < 0) {
+            return error.NoInterface;
+        }
+
+        try instance.removeColorValuesChanged(id);
+    }
+};
+
 pub const ITypedEventHandler = extern struct {
     // COM vtable layout
     vtable: *const VTable,
 
     pub const VTable = extern struct {
-        QueryInterface: *const fn(
+        QueryInterface: *const fn (
             self: *anyopaque,
             riid: *const Guid,
             ppvObject: *?*anyopaque,
         ) callconv(.C) HRESULT,
-        AddRef: *const fn(
+        AddRef: *const fn (
             self: *anyopaque,
         ) callconv(.C) u32,
-        Release: *const fn(
+        Release: *const fn (
             self: *anyopaque,
         ) callconv(.C) u32,
 
         // Invoke method for the delegate
-        Invoke: *const fn(
+        Invoke: *const fn (
             self: *ITypedEventHandler,
             sender: *anyopaque,
             args: *anyopaque,
@@ -293,21 +411,23 @@ pub const ITypedEventHandler = extern struct {
     };
 };
 
-const IRoMetaDataLocator = extern struct {
-    lpVtbl: *VTable,
-
-    const VTable = extern struct {
-        QueryInterface: fn(*IRoMetaDataLocator, *Guid, *?*anyopaque) HRESULT,
-        AddRef: fn(*IRoMetaDataLocator) u32,
-        Release: fn(*IRoMetaDataLocator) u32,
-        FindTypeDef: fn(*IRoMetaDataLocator, *HSTRING, *[*:0]u16, u32, ?*[*:0]u16, ?*u32) HRESULT,
+pub fn TypedEventHandler(I: type, R: type) type {
+    const r_signature = if (@hasDecl(R, "SIGNATURE"))
+        @field(R, "SIGNATURE")
+    else blk: {
+        const idx = std.mem.lastIndexOf(u8, @typeName(R), ".");
+        break :blk std.fmt.comptimePrint("cinterface({s})", .{ if (idx) |i| @typeName(R)[i+|1..] else @typeName(R) });
     };
-};
 
-pub fn TypedEventHandler(I: type) type {
+    const signature: []const u8 = std.fmt.comptimePrint("pinterface({{9de1c534-6ae1-11e0-84e1-18a905bcc53f}};{s};{s})", .{ I.SIGNATURE, r_signature });
+    const guid = guidFromWinRTSignature(signature);
+
     return extern struct {
+        const SIGNATURE = signature;
+        const IID = guid;
+
         // pub const IID: Guid = Guid.initString("9de1c534-6ae1-11e0-84e1-18a905bcc53f");
-        pub const VTABLE = ITypedEventHandler.VTable {
+        pub const VTABLE = ITypedEventHandler.VTable{
             .QueryInterface = query_interface,
             .AddRef = add_ref,
             .Release = release,
@@ -316,35 +436,13 @@ pub fn TypedEventHandler(I: type) type {
 
         vtable: *const ITypedEventHandler.VTable,
         refs: std.atomic.Value(u32),
-        iid: Guid,
         cb: *const fn (sender: *I) callconv(.C) void,
 
-        var WindowsFoundation: [19:0]u16 = [_:0]u16{'W','i','n','d','o','w','s','.','F','o','u','n','d','a','t','i','o','n',0};
-        var TypedEventHandler2: [20:0]u16 = [_:0]u16{'T','y','p','e','d','E','v','e','n','t','H','a','n','d','l','e','r','`','2',0};
-        var IInspectable_NAME: [32:0]u16 = [_:0]u16{'W','i','n','d','o','w','s','.','F','o','u','n','d','a','t','i','o','n','.','I','I','n','s','p','e','c','t','a','b','l','e',0};
-
         pub fn init(callback: *const fn (sender: *I) callconv(.C) void) !@This() {
-            var type_names: [4]?*u16 = [_]?*u16{
-                &WindowsFoundation[0],
-                &TypedEventHandler2[0],
-                &I.TYPE_NAME[0],
-                &IInspectable_NAME[0],
-            };
-
-            var iid: Guid = undefined;
-            _ = RoGetParameterizedTypeInstanceIID(
-                @intCast(type_names.len),
-                type_names[0..].ptr,
-                null,
-                &iid,
-                null,
-            );
-            std.debug.print("{any}\n", .{ std.mem.toBytes(&iid) });
-
+            std.debug.print("{s}\n", .{SIGNATURE});
             return .{
                 .vtable = &VTABLE,
                 .refs = std.atomic.Value(u32).init(1),
-                .iid = iid,
                 .cb = callback,
             };
         }
@@ -352,19 +450,15 @@ pub fn TypedEventHandler(I: type) type {
         fn query_interface(self: *anyopaque, riid: *const Guid, out: *?*anyopaque) callconv(.C) HRESULT {
             const me: *@This() = @ptrCast(@alignCast(self));
             // Support IUnknown and (optionally) the exact delegate IID.
-            std.debug.print("[TARGET]   {any}\n", .{ std.mem.toBytes(riid) });
-            std.debug.print("[EXPECTED] {any}\n", .{ std.mem.toBytes(&me.iid) });
-            if (
-                std.mem.eql(u8, std.mem.asBytes(riid), std.mem.asBytes(IID_IUnknown))
-                or std.mem.eql(u8, std.mem.asBytes(riid), std.mem.asBytes(&me.iid))
-            ) {
-                std.debug.print("[OK]\n", .{});
+            if (std.mem.eql(u8, &riid.Bytes, &wiredGuid(&IID).Bytes) or
+                std.mem.eql(u8, &riid.Bytes, &wiredGuid(IID_IUnknown).Bytes) or
+                std.mem.eql(u8, &riid.Bytes, &wiredGuid(IID_IAgileObject).Bytes))
+            {
                 out.* = @as(?*anyopaque, @ptrCast(me));
                 _ = add_ref(self);
                 return 0; // S_OK
             }
             out.* = null;
-            std.debug.print("[NOINTERFACE]\n", .{});
             return -2147467262; // E_NOINTERFACE
         }
 
@@ -384,73 +478,13 @@ pub fn TypedEventHandler(I: type) type {
 
         // Invoke(sender, args) — QI sender to IUISettings3 and call user cb
         fn invoke(self: *ITypedEventHandler, sender: *anyopaque, _: *anyopaque) callconv(.C) HRESULT {
-            _ = self;
-            _ = sender;
-            std.debug.print("Color Change", .{});
-            // const me: *@This() = @ptrCast(@alignCast(self));
-            // var i: ?*I = null;
-            // const hr = sender.vtable.base.QueryInterface(@ptrCast(sender), &I.IID, @ptrCast(&i));
-            // if (hr > 0 and i != null) {
-            //     me.cb(i.?);
-            //     _ = @as(*IUnknown, @ptrCast(i.?)).vtable.Release(@ptrCast(i.?));
-            // }
-            return 0; // S_OK regardless; you usually don’t fail event callbacks
+            const this: *@This() = @ptrCast(@alignCast(self));
+            std.debug.print("[COLOR CHANGE]\n", .{});
+            this.cb(@ptrCast(@alignCast(sender)));
+            return S_OK; // S_OK regardless; you usually don’t fail event callbacks
         }
     };
 }
-
-pub const UISettings = extern struct {
-    pub var TYPE_NAME: [37:0]u16 = [_:0]u16{'W','i','n','d','o','w','s','.','U','I','.','V','i','e','w','M','a','n','a','g','e','m','e','n','t','.','U','I','S','e','t','t','i','n','g','s',0};
-    pub const RUNTIME_NAME: [:0]const u16 = TYPE_NAME[0..];
-
-    var Factory: FactoryCache = .{};
-
-    vtable: *const IUISettings,
-
-    pub fn init() anyerror!@This() {
-        const inner: *IUISettings = try @This().Factory.call(
-            IGenericFactory,
-            IUISettings,
-            @This().RUNTIME_NAME,
-        );
-        return .{ .vtable = inner };
-    }
-
-    pub fn deinit(self: *const @This()) u32 {
-        return self.release();
-    }
-
-    pub fn release(self: *const @This()) u32 {
-        return self.vtable.release();
-    }
-
-    pub fn getColorValue(self: *const @This(), color_type: UIColorType) !Color {
-        var instance: *IUISettings3 = undefined;
-        if (self.vtable.query_interface(&IUISettings3.IID, @ptrCast(&instance)) < 0) {
-            return error.NoInterface;
-        }
-
-        return instance.getColorValue(color_type);
-    }
-
-    pub fn colorValuesChanged(self: *const @This(), handler: *TypedEventHandler(IUISettings3)) !i64 {
-        var instance: *IUISettings3 = undefined;
-        if (self.vtable.query_interface(&IUISettings3.IID, @ptrCast(&instance)) < 0) {
-            return error.NoInterface;
-        }
-
-        return instance.colorValuesChanged(handler);
-    }
-
-    pub fn removeColorValuesChanged(self: *const @This(), id: i64) !void {
-        var instance: *IUISettings3 = undefined;
-        if (self.vtable.query_interface(&IUISettings3.IID, @ptrCast(&instance)) < 0) {
-            return error.NoInterface;
-        }
-
-        try instance.removeColorValuesChanged(id);
-    }
-};
 
 pub const IGenericFactory = extern struct {
     pub const VTable = extern struct { base: IInspectable.VTable, ActivateInstance: *const fn (*IGenericFactory, **anyopaque) callconv(.C) HRESULT };
@@ -597,7 +631,7 @@ const suffix: []const u16 = std.unicode.utf8ToUtf16LeStringLiteral(".dll");
 fn searchPath(runtime_path: [:0]const u16, name: *?HSTRING) Error!?*anyopaque {
     var path: []const u16 = runtime_path[0..];
 
-    while (rfind(u16, path, '.')) |pos| {
+    while (std.mem.lastIndexOf(u16, path, '.')) |pos| {
         path = path[0..pos];
 
         var library: [:0]u16 = std.heap.smp_allocator.allocSentinel(u16, path.len + suffix.len, 0) catch return error.OutOfMemory;
@@ -609,14 +643,6 @@ fn searchPath(runtime_path: [:0]const u16, name: *?HSTRING) Error!?*anyopaque {
         if (getActivationFactory(library.ptr, name)) |r| {
             return r;
         }
-    }
-    return null;
-}
-
-fn rfind(T: type, source: []const T, match: T) ?usize {
-    var i: usize = source.len - 1;
-    while (i > 0) : (i -= 1) {
-        if (std.meta.eql(source[i], match)) return i;
     }
     return null;
 }
