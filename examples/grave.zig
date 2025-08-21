@@ -1,9 +1,14 @@
 const std = @import("std");
+const win32 = @import("win32");
+
 const utils = @import("utils");
+const UISettings = utils.graveyard.UISettings;
+const TypedEventHandler = utils.graveyard.TypedEventHandler;
+const IUISettings3 = utils.graveyard.IUISettings3;
 
 var wait = std.atomic.Value(bool).init(true);
 
-fn onSystemThemeChange(settings: *utils.graveyard.IUISettings3) void {
+fn onSystemThemeChange(settings: *utils.graveyard.IUISettings3) callconv(.C) void {
     std.debug.print("{any}\n", .{ settings.getColorValue(.Foreground) });
     wait.store(false, .release);
 }
@@ -15,18 +20,19 @@ pub fn main() !void {
     // }) != utils.graveyard.S_OK) return error.CoInitializeFailure;
     // defer utils.graveyard.CoUninitialize();
 
-    var ui_settings = try utils.graveyard.UISettings.init();
+    var ui_settings = try UISettings.init();
     defer _ = ui_settings.release();
 
-    std.debug.print("{any}\n", .{ ui_settings.getColorValue(utils.graveyard.UIColorType.Foreground) });
+    std.debug.print("{any}\n", .{ ui_settings.getColorValue(.Foreground) });
 
-    var handler = try utils.graveyard.TypedEventHandler(utils.graveyard.IUISettings3).init(std.heap.smp_allocator, onSystemThemeChange);
-    defer handler.deinit();
+    var handler = try TypedEventHandler(IUISettings3).init(onSystemThemeChange);
+    const handle = try ui_settings.colorValuesChanged(&handler);
 
-    const handle = try ui_settings.colorValuesChanged(handler);
 
-    while (wait.load(.acquire)) {
-        std.time.sleep(std.time.ns_per_s * 1);
+    var msg: win32.ui.windows_and_messaging.MSG = undefined;
+    while (win32.ui.windows_and_messaging.GetMessageW(&msg, null, 0, 0) > 0) {
+        _ = win32.ui.windows_and_messaging.TranslateMessage(&msg);
+        _ = win32.ui.windows_and_messaging.DispatchMessageW(&msg);
     }
 
     try ui_settings.removeColorValuesChanged(handle);

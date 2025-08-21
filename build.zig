@@ -58,6 +58,8 @@ pub fn addExample(
         .optimize = optimize,
     });
 
+    exe.linkLibC();
+
     for (modules) |module| {
         exe.root_module.addImport(module[0], module[1]);
     }
