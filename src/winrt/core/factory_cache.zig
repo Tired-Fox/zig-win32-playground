@@ -1,23 +1,24 @@
 const std = @import("std");
-const super = @import("../../winrt.zig");
+const winrt = @import("../../winrt.zig");
 const win32 = @import("win32");
 
 const Guid = win32.zig.Guid;
 const HRESULT = win32.foundation.HRESULT;
-const HSTRING = win32.system.win_rt.HSTRING;
+const HSTRING = winrt.HSTRING;
 const IUnknown = win32.system.com.IUnknown;
 
-const CO_E_NOTINITIALIZED = super.CO_E_NOTINITIALIZED;
-const E_ACCESSDENIED = super.E_ACCESSDENIED;
-const E_OUTOFMEMORY = super.E_OUTOFMEMORY;
+const CO_E_NOTINITIALIZED = winrt.CO_E_NOTINITIALIZED;
+const E_ACCESSDENIED = winrt.E_ACCESSDENIED;
+const E_OUTOFMEMORY = winrt.E_OUTOFMEMORY;
 const IID_IAgileObject = win32.system.com.IID_IAgileObject;
-const REGDB_E_CLASSNOTREG = super.REGDB_E_CLASSNOTREG;
-const S_OK = super.S_OK;
+const REGDB_E_CLASSNOTREG = winrt.REGDB_E_CLASSNOTREG;
+const S_OK = winrt.S_OK;
+
+const WindowsCreateString = winrt.WindowsCreateString;
+const WindowsDeleteString = winrt.WindowsDeleteString;
 
 const CoIncrementMTAUsage = win32.system.com.CoIncrementMTAUsage;
 const RoGetActivationFactory = win32.system.win_rt.RoGetActivationFactory;
-const WindowsCreateString = win32.system.win_rt.WindowsCreateString;
-const WindowsDeleteString = win32.system.win_rt.WindowsDeleteString;
 
 pub const FactoryError = error{
     /// No interface found for the given action, or the given class does not implement IInspectable
@@ -32,12 +33,12 @@ pub const FactoryError = error{
 pub const FactoryCache = struct {
     shared: std.atomic.Value(?*anyopaque) = .init(null),
 
-    pub fn call(self: *@This(), I: type, R: type, runtime_name: [:0]const u16) !*R {
+    pub fn call(self: *@This(), I: type, runtime_name: [:0]const u16) !*I {
         while (true) {
             // Attempt to load a previously cached factory pointer.
             if (self.shared.load(.acquire)) |ptr| {
                 // If a pointer is found, the cache is primed and we're good to go.
-                return try I.ActivateInstance(@ptrCast(@alignCast(ptr)), R);
+                return @ptrCast(@alignCast(ptr));
             }
 
             // Otherwise, we load the factory the usual way.
@@ -52,7 +53,7 @@ pub const FactoryCache = struct {
             } else {
                 // Otherwise, for non-agile factories we simply use the factory
                 // and discard after use as it is not safe to cache.
-                return try I.ActivateInstance(@ptrCast(@alignCast(factory)), R);
+                return @ptrCast(@alignCast(factory));
             }
         }
     }
@@ -63,11 +64,8 @@ fn load_factory(I: type, runtime_name: [:0]const u16) FactoryError!*anyopaque {
 
     var factory: *anyopaque = undefined;
 
-    var name: ?HSTRING = undefined;
-    if (@as(u32, @bitCast(WindowsCreateString(runtime_name.ptr, @intCast(runtime_name.len - 1), &name))) != S_OK) {
-        return error.OutOfMemory;
-    }
-    defer _ = WindowsDeleteString(name);
+    const name: ?HSTRING = try WindowsCreateString(runtime_name);
+    defer WindowsDeleteString(name);
 
     const code = code_block: {
         var result: u32 = @bitCast(RoGetActivationFactory(
@@ -124,7 +122,7 @@ const suffix: []const u16 = std.unicode.utf8ToUtf16LeStringLiteral(".dll");
 /// "A.B.TypeName" then the attempted load order will be:
 ///   1. A.B.dll
 ///   2. A.dll
-fn searchPath(runtime_path: [:0]const u16, name: *?HSTRING) FactoryError!?*anyopaque {
+fn searchPath(runtime_path: [:0]const u16, name: *const ?HSTRING) FactoryError!?*anyopaque {
     var path: []const u16 = runtime_path[0..];
 
     while (std.mem.lastIndexOf(u16, path, &[_]u16{'.'})) |pos| {
@@ -143,12 +141,12 @@ fn searchPath(runtime_path: [:0]const u16, name: *?HSTRING) FactoryError!?*anyop
     return null;
 }
 
-const DllGetActivationFactory = *const fn (name: *anyopaque, factory: **anyopaque) HRESULT;
+const DllGetActivationFactory = *const fn (name: *const anyopaque, factory: **anyopaque) HRESULT;
 const DllGetActivationFactoryName: [:0]const u8 = "DllGetActivationFactory";
 
 fn getActivationFactory(
     library: [*:0]const u16,
-    name: *?HSTRING,
+    name: *const ?HSTRING,
 ) ?*anyopaque {
     const function = delay_load(DllGetActivationFactory, library, DllGetActivationFactoryName.ptr) orelse return null;
     var abi: *anyopaque = undefined;

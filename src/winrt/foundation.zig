@@ -8,6 +8,7 @@ pub const HRESULT = win32.foundation.HRESULT;
 pub const IID_IUnknown = win32.system.com.IID_IUnknown;
 pub const IID_IAgileObject = win32.system.com.IID_IAgileObject;
 pub const S_OK = winrt.S_OK;
+pub const E_NOINTERFACE = winrt.E_NOINTERFACE;
 
 /// Compute the GUID for a WinRT parameterized type from its canonical signature
 /// using the WinRT "pinterface" namespace and RFC-4122 UUIDv5 (SHA-1).
@@ -135,10 +136,10 @@ pub fn TypedEventHandler(I: type, R: type) type {
 
         vtable: *const ITypedEventHandler.VTable,
         refs: std.atomic.Value(u32),
-        cb: *const fn (sender: *I) callconv(.C) void,
+        cb: *const fn (sender: *I, context: ?*anyopaque) callconv(.C) void,
+        context: ?*anyopaque = null,
 
-        pub fn init(callback: *const fn (sender: *I) callconv(.C) void) !@This() {
-            std.debug.print("{s}\n", .{SIGNATURE});
+        pub fn init(callback: *const fn (sender: *I, context: ?*anyopaque) callconv(.C) void) !@This() {
             return .{
                 .vtable = &VTABLE,
                 .refs = std.atomic.Value(u32).init(1),
@@ -146,19 +147,28 @@ pub fn TypedEventHandler(I: type, R: type) type {
             };
         }
 
+        pub fn initWithState(callback: *const fn (sender: *I, context: ?*anyopaque) callconv(.C) void, context: anytype) !@This() {
+            return .{
+                .vtable = &VTABLE,
+                .refs = std.atomic.Value(u32).init(1),
+                .cb = callback,
+                .context = @ptrCast(context),
+            };
+        }
+
         fn query_interface(self: *anyopaque, riid: *const Guid, out: *?*anyopaque) callconv(.C) HRESULT {
             const me: *@This() = @ptrCast(@alignCast(self));
-            // Support IUnknown and (optionally) the exact delegate IID.
+            // TODO: Handle IMarshal
             if (std.mem.eql(u8, &riid.Bytes, &wiredGuid(&IID).Bytes) or
                 std.mem.eql(u8, &riid.Bytes, &wiredGuid(IID_IUnknown).Bytes) or
                 std.mem.eql(u8, &riid.Bytes, &wiredGuid(IID_IAgileObject).Bytes))
             {
                 out.* = @as(?*anyopaque, @ptrCast(me));
                 _ = add_ref(self);
-                return 0; // S_OK
+                return S_OK;
             }
             out.* = null;
-            return -2147467262; // E_NOINTERFACE
+            return @bitCast(E_NOINTERFACE);
         }
 
         fn add_ref(self: *anyopaque) callconv(.C) u32 {
@@ -169,19 +179,18 @@ pub fn TypedEventHandler(I: type, R: type) type {
         fn release(self: *anyopaque) callconv(.C) u32 {
             const me: *@This() = @ptrCast(@alignCast(self));
             const left = me.refs.fetchSub(1, .acq_rel) - 1;
-            if (left == 0) {
-                // std.heap.c_allocator.destroy(me);
-            }
             return left;
         }
 
         // Invoke(sender, args) - Convert sender to `I` and pass it to the stored callback
+        //
+        // This will always return `S_OK` because event callbacks shouldn't fail
         fn invoke(self: *ITypedEventHandler, sender: *anyopaque, _: *anyopaque) callconv(.C) HRESULT {
             const this: *@This() = @ptrCast(@alignCast(self));
             // TODO: Allow user to store a pointer to some state in this delegate so it can be
             //       passed to the callback
-            this.cb(@ptrCast(@alignCast(sender)));
-            return S_OK; // Avoid failing the callback for an event
+            this.cb(@ptrCast(@alignCast(sender)), this.context);
+            return S_OK;
         }
     };
 }

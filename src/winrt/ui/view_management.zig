@@ -14,6 +14,8 @@ const ITypedEventHandler = winrt.foundation.ITypedEventHandler;
 const TrustLevel = win32.system.win_rt.TrustLevel;
 const TypedEventHandler = winrt.foundation.TypedEventHandler;
 
+const S_OK = winrt.S_OK;
+
 pub const HandPreference = enum(i32) {
     left_handed = 0,
     right_handed = 1,
@@ -64,16 +66,10 @@ pub const UIColorType = enum(i32) {
 pub const IUISettings = extern struct {
     vtable: *const VTable,
 
-    pub fn release(self: *const @This()) u32 {
-        return self.vtable.Release(@ptrCast(self));
-    }
-
-    pub fn query_interface(self: *const @This(), riid: *const Guid, object: **anyopaque) i32 {
-        return self.vtable.QueryInterface(@ptrCast(self), riid, object);
-    }
-
     pub const GUID: []const u8 = "85361600-1c63-4627-bcb1-3a89e0bc9c55";
     pub const IID: Guid = Guid.initString(GUID);
+    pub const SIGNATURE: []const u8 = std.fmt.comptimePrint("{{{s}}}", .{ GUID });
+
     pub const VTable = extern struct {
         QueryInterface: *const fn (self: *const anyopaque, riid: *const Guid, ppvObject: **anyopaque) callconv(.C) HRESULT,
         AddRef: *const fn (self: *const anyopaque) callconv(.C) u32,
@@ -102,9 +98,10 @@ pub const IUISettings = extern struct {
 pub const IUISettings2 = extern struct {
     vtable: *const VTable,
 
-    pub var TYPE_NAME: [37:0]u16 = [_:0]u16{ 'W', 'i', 'n', 'd', 'o', 'w', 's', '.', 'U', 'I', '.', 'V', 'i', 'e', 'w', 'M', 'a', 'n', 'a', 'g', 'e', 'm', 'e', 'n', 't', '.', 'U', 'I', 'S', 'e', 't', 't', 'i', 'n', 'g', 's', 0 };
-    pub const RUNTIME_NAME: [:0]const u16 = TYPE_NAME[0..];
-    pub const IID: Guid = Guid.initString("bad82401-2721-44f9-bb91-2bb228be442f");
+    pub const GUID: []const u8 = "bad82401-2721-44f9-bb91-2bb228be442f";
+    pub const IID: Guid = Guid.initString(GUID);
+    pub const SIGNATURE: []const u8 = std.fmt.comptimePrint("{{{s}}}", .{ GUID });
+
     pub const VTable = extern struct {
         QueryInterface: *const fn (self: *const anyopaque, riid: *const Guid, ppvObject: **anyopaque) callconv(.C) HRESULT,
         AddRef: *const fn (self: *const anyopaque) callconv(.C) u32,
@@ -123,33 +120,10 @@ pub const IUISettings2 = extern struct {
 pub const IUISettings3 = extern struct {
     vtable: *const VTable,
 
-    pub fn getColorValue(self: *const @This(), color_type: UIColorType) !Color {
-        var result: Color = undefined;
-        if (self.vtable.GetColorValue(@ptrCast(self), color_type, &result) < 0) {
-            return error.GetColorFailure;
-        }
-        return result;
-    }
+    pub const GUID: []const u8 = "03021be4-5254-4781-8194-5168f7d06d7b";
+    pub const IID: Guid = Guid.initString(GUID);
+    pub const SIGNATURE: []const u8 = std.fmt.comptimePrint("{{{s}}}", .{ GUID });
 
-    pub fn colorValuesChanged(self: *const @This(), handler: *TypedEventHandler(UISettings, IInspectable)) !i64 {
-        var result: i64 = 0;
-        const code = self.vtable.ColorValuesChanged(@ptrCast(self), @ptrCast(handler), &result);
-        if (code < 0) {
-            std.debug.print("0x{X}\n", .{@as(u32, @bitCast(code))});
-            return error.BindHookFailure;
-        }
-        return result;
-    }
-
-    pub fn removeColorValuesChanged(self: *const @This(), id: i64) !void {
-        if (self.vtable.RemoveColorValuesChanged(@ptrCast(self), id) < 0) {
-            return error.UnbindHookFailure;
-        }
-    }
-
-    pub var TYPE_NAME: [37:0]u16 = [_:0]u16{ 'W', 'i', 'n', 'd', 'o', 'w', 's', '.', 'U', 'I', '.', 'V', 'i', 'e', 'w', 'M', 'a', 'n', 'a', 'g', 'e', 'm', 'e', 'n', 't', '.', 'U', 'I', 'S', 'e', 't', 't', 'i', 'n', 'g', 's', 0 };
-    pub const RUNTIME_NAME: [:0]const u16 = TYPE_NAME[0..];
-    pub const IID: Guid = Guid.initString("03021be4-5254-4781-8194-5168f7d06d7b");
     pub const VTable = extern struct {
         QueryInterface: *const fn (self: *const anyopaque, riid: *const Guid, ppvObject: **anyopaque) callconv(.C) HRESULT,
         AddRef: *const fn (self: *const anyopaque) callconv(.C) u32,
@@ -168,9 +142,10 @@ pub const IUISettings3 = extern struct {
 pub const IUISettings4 = extern struct {
     vtable: *const VTable,
 
-    pub var TYPE_NAME: [37:0]u16 = [_:0]u16{ 'W', 'i', 'n', 'd', 'o', 'w', 's', '.', 'U', 'I', '.', 'V', 'i', 'e', 'w', 'M', 'a', 'n', 'a', 'g', 'e', 'm', 'e', 'n', 't', '.', 'U', 'I', 'S', 'e', 't', 't', 'i', 'n', 'g', 's', 0 };
-    pub const RUNTIME_NAME: [:0]const u16 = TYPE_NAME[0..];
-    pub const IID: Guid = Guid.initString("52bb3002-919b-4d6b-9b78-8dd66ff4b93b");
+    pub const GUID: []const u8 = "52bb3002-919b-4d6b-9b78-8dd66ff4b93b";
+    pub const IID: Guid = Guid.initString(GUID);
+    pub const SIGNATURE: []const u8 = std.fmt.comptimePrint("{{{s}}}", .{ GUID });
+
     pub const VTable = extern struct {
         QueryInterface: *const fn (self: *const anyopaque, riid: *const Guid, ppvObject: **anyopaque) callconv(.C) HRESULT,
         AddRef: *const fn (self: *const anyopaque) callconv(.C) u32,
@@ -189,9 +164,10 @@ pub const IUISettings4 = extern struct {
 pub const IUISettings5 = extern struct {
     vtable: *const VTable,
 
-    pub var TYPE_NAME: [37:0]u16 = [_:0]u16{ 'W', 'i', 'n', 'd', 'o', 'w', 's', '.', 'U', 'I', '.', 'V', 'i', 'e', 'w', 'M', 'a', 'n', 'a', 'g', 'e', 'm', 'e', 'n', 't', '.', 'U', 'I', 'S', 'e', 't', 't', 'i', 'n', 'g', 's', 0 };
-    pub const RUNTIME_NAME: [:0]const u16 = TYPE_NAME[0..];
-    pub const IID: Guid = Guid.initString("5349d588-0cb5-5f05-bd34-706b3231f0bd");
+    pub const GUID: []const u8 = "5349d588-0cb5-5f05-bd34-706b3231f0bd";
+    pub const IID: Guid = Guid.initString(GUID);
+    pub const SIGNATURE: []const u8 = std.fmt.comptimePrint("{{{s}}}", .{ GUID });
+
     pub const VTable = extern struct {
         QueryInterface: *const fn (self: *const anyopaque, riid: *const Guid, ppvObject: **anyopaque) callconv(.C) HRESULT,
         AddRef: *const fn (self: *const anyopaque) callconv(.C) u32,
@@ -210,9 +186,10 @@ pub const IUISettings5 = extern struct {
 pub const IUISettings6 = extern struct {
     vtable: *const VTable,
 
-    pub var TYPE_NAME: [37:0]u16 = [_:0]u16{ 'W', 'i', 'n', 'd', 'o', 'w', 's', '.', 'U', 'I', '.', 'V', 'i', 'e', 'w', 'M', 'a', 'n', 'a', 'g', 'e', 'm', 'e', 'n', 't', '.', 'U', 'I', 'S', 'e', 't', 't', 'i', 'n', 'g', 's', 0 };
-    pub const RUNTIME_NAME: [:0]const u16 = TYPE_NAME[0..];
-    pub const IID: Guid = Guid.initString("aef19bd7_fe31_5a04_ada4_469aaec6dfa9");
+    pub const GUID: []const u8 = "aef19bd7_fe31_5a04_ada4_469aaec6dfa9";
+    pub const IID: Guid = Guid.initString(GUID);
+    pub const SIGNATURE: []const u8 = std.fmt.comptimePrint("{{{s}}}", .{ GUID });
+
     pub const VTable = extern struct {
         QueryInterface: *const fn (self: *const anyopaque, riid: *const Guid, ppvObject: **anyopaque) callconv(.C) HRESULT,
         AddRef: *const fn (self: *const anyopaque) callconv(.C) u32,
@@ -231,62 +208,60 @@ pub const IUISettings6 = extern struct {
 
 pub const UISettings = extern struct {
     pub const TYPE_NAME: []const u8 = "Windows.UI.ViewManagement.UISettings";
-    pub const SIGNATURE: []const u8 = std.fmt.comptimePrint("rc({s};{{{s}}})", .{ TYPE_NAME, IUISettings.GUID });
+    pub const SIGNATURE: []const u8 = std.fmt.comptimePrint("rc({s};{s})", .{ TYPE_NAME, IUISettings.SIGNATURE });
 
-    pub const RUNTIME_NAME: [:0]const u16 = std.unicode.utf8ToUtf16LeStringLiteral(std.fmt.comptimePrint("{s}\x00", .{TYPE_NAME}));
+    pub const RUNTIME_NAME: [:0]const u16 = std.unicode.utf8ToUtf16LeStringLiteral(TYPE_NAME);
 
     var Factory: FactoryCache = .{};
 
     vtable: *const IUISettings.VTable,
 
     pub fn init() anyerror!*@This() {
-        const inner: *IUISettings = try @This().Factory.call(
+        const factory: *IGenericFactory = try @This().Factory.call(
             IGenericFactory,
-            IUISettings,
             @This().RUNTIME_NAME,
         );
-        return @ptrCast(@alignCast(inner));
+        return @ptrCast(@alignCast(try factory.ActivateInstance(IUISettings)));
     }
 
-    pub fn deinit(self: *const @This()) u32 {
-        return self.release();
+    pub fn deinit(self: *const @This()) void {
+        _ = self.release();
     }
 
     pub fn release(self: *const @This()) u32 {
-        const this: *const IUISettings = @ptrCast(@alignCast(self));
-        return this.release();
+        return self.vtable.Release(@ptrCast(self));
+    }
+
+    fn query_interface(self: *const @This(), I: type) !*I {
+        var result: *anyopaque = undefined;
+        if (self.vtable.QueryInterface(@ptrCast(self), &I.IID, &result) < S_OK) {
+            return error.NoInterface;
+        }
+        return @ptrCast(@alignCast(result));
     }
 
     pub fn getColorValue(self: *const @This(), color_type: UIColorType) !Color {
-        const this: *const IUISettings = @ptrCast(@alignCast(self));
+        const this = try self.query_interface(IUISettings3);
 
-        var instance: *IUISettings3 = undefined;
-        if (this.query_interface(&IUISettings3.IID, @ptrCast(&instance)) < 0) {
-            return error.NoInterface;
-        }
-
-        return instance.getColorValue(color_type);
+        var color: Color = undefined;
+        _ = this.vtable.GetColorValue(@ptrCast(this), color_type, &color);
+        return color;
     }
 
     pub fn colorValuesChanged(self: *const @This(), handler: *TypedEventHandler(UISettings, IInspectable)) !i64 {
-        const this: *const IUISettings = @ptrCast(@alignCast(self));
+        const this = try self.query_interface(IUISettings3);
 
-        var instance: *IUISettings3 = undefined;
-        if (this.query_interface(&IUISettings3.IID, @ptrCast(&instance)) < 0) {
-            return error.NoInterface;
+        var result: i64 = 0;
+        if (this.vtable.ColorValuesChanged(@ptrCast(this), @ptrCast(handler), &result) < 0) {
+            return error.BindHookFailure;
         }
-
-        return instance.colorValuesChanged(handler);
+        return result;
     }
 
     pub fn removeColorValuesChanged(self: *const @This(), id: i64) !void {
-        const this: *const IUISettings = @ptrCast(@alignCast(self));
-
-        var instance: *IUISettings3 = undefined;
-        if (this.query_interface(&IUISettings3.IID, @ptrCast(&instance)) < 0) {
-            return error.NoInterface;
+        const this = try self.query_interface(IUISettings3);
+        if (this.vtable.RemoveColorValuesChanged(@ptrCast(this), id) < 0) {
+            return error.UnbindHookFailure;
         }
-
-        try instance.removeColorValuesChanged(id);
     }
 };
