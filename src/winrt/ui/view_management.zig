@@ -8,11 +8,13 @@ const FactoryCache = core.FactoryCache;
 const Guid = win32.zig.Guid;
 const HRESULT = win32.foundation.HRESULT;
 const HSTRING = win32.system.win_rt.HSTRING;
+const Implements = core.Implements;
 const IGenericFactory = core.IGenericFactory;
 const IInspectable = win32.system.win_rt.IInspectable;
 const ITypedEventHandler = winrt.foundation.ITypedEventHandler;
 const TrustLevel = win32.system.win_rt.TrustLevel;
 const TypedEventHandler = winrt.foundation.TypedEventHandler;
+const Signature = core.Signature;
 
 const S_OK = winrt.S_OK;
 
@@ -66,19 +68,13 @@ pub const UIColorType = enum(i32) {
 pub const IUISettings = extern struct {
     vtable: *const VTable,
 
+    pub usingnamespace IInspectable.Mixins(@This());
+
     pub const GUID: []const u8 = "85361600-1c63-4627-bcb1-3a89e0bc9c55";
     pub const IID: Guid = Guid.initString(GUID);
-    pub const SIGNATURE: []const u8 = std.fmt.comptimePrint("{{{s}}}", .{ GUID });
+    pub const SIGNATURE: []const u8 = Signature.interface(GUID);
 
-    pub const VTable = extern struct {
-        QueryInterface: *const fn (self: *const anyopaque, riid: *const Guid, ppvObject: **anyopaque) callconv(.C) HRESULT,
-        AddRef: *const fn (self: *const anyopaque) callconv(.C) u32,
-        Release: *const fn (self: *const anyopaque) callconv(.C) u32,
-
-        GetIids: *const fn (self: *const anyopaque, iidCount: ?*u32, iids: [*]?*Guid) callconv(.C) HRESULT,
-        GetRuntimeClassName: *const fn (self: *const anyopaque, className: ?*?HSTRING) callconv(.C) HRESULT,
-        GetTrustLevel: *const fn (self: *const anyopaque, trustLevel: ?*TrustLevel) callconv(.C) HRESULT,
-
+    pub const VTable = Implements(.{ IInspectable.VTable }, struct {
         HandPreference: *const fn (*const anyopaque, *HandPreference) callconv(.C) HRESULT,
         CursorSize: *const fn (*const anyopaque, *win32.foundation.SIZE) callconv(.C) HRESULT,
         ScrollBarSize: *const fn (*const anyopaque, *win32.foundation.SIZE) callconv(.C) HRESULT,
@@ -92,17 +88,19 @@ pub const IUISettings = extern struct {
         DoubleClickTime: *const fn (*const anyopaque, *u32) callconv(.C) HRESULT,
         MouseHoverTime: *const fn (*const anyopaque, *u32) callconv(.C) HRESULT,
         UIElementColor: *const fn (*const anyopaque, UIElementType, *Color) callconv(.C) HRESULT,
-    };
+    });
 };
 
 pub const IUISettings2 = extern struct {
     vtable: *const VTable,
 
+    pub usingnamespace IInspectable.Mixins(@This());
+
     pub const GUID: []const u8 = "bad82401-2721-44f9-bb91-2bb228be442f";
     pub const IID: Guid = Guid.initString(GUID);
-    pub const SIGNATURE: []const u8 = std.fmt.comptimePrint("{{{s}}}", .{ GUID });
+    pub const SIGNATURE: []const u8 = Signature.interface(GUID);
 
-    pub const VTable = extern struct {
+    pub const VTable = Implements(.{ IInspectable.VTable }, struct {
         QueryInterface: *const fn (self: *const anyopaque, riid: *const Guid, ppvObject: **anyopaque) callconv(.C) HRESULT,
         AddRef: *const fn (self: *const anyopaque) callconv(.C) u32,
         Release: *const fn (self: *const anyopaque) callconv(.C) u32,
@@ -114,107 +112,78 @@ pub const IUISettings2 = extern struct {
         TextScaleFactor: *const fn (*const anyopaque, *f64) callconv(.C) HRESULT,
         TextScaleFactorChanged: *const fn (*const anyopaque, *IInspectable, *i64) callconv(.C) HRESULT,
         RemoveTextScaleFactorChanged: *const fn (*const anyopaque, i64) callconv(.C) HRESULT,
-    };
+    });
 };
 
 pub const IUISettings3 = extern struct {
     vtable: *const VTable,
 
+    pub usingnamespace IInspectable.Mixins(@This());
+
     pub const GUID: []const u8 = "03021be4-5254-4781-8194-5168f7d06d7b";
     pub const IID: Guid = Guid.initString(GUID);
-    pub const SIGNATURE: []const u8 = std.fmt.comptimePrint("{{{s}}}", .{ GUID });
+    pub const SIGNATURE: []const u8 = Signature.interface(GUID);
 
-    pub const VTable = extern struct {
-        QueryInterface: *const fn (self: *const anyopaque, riid: *const Guid, ppvObject: **anyopaque) callconv(.C) HRESULT,
-        AddRef: *const fn (self: *const anyopaque) callconv(.C) u32,
-        Release: *const fn (self: *const anyopaque) callconv(.C) u32,
-
-        GetIids: *const fn (self: *const anyopaque, iidCount: ?*u32, iids: [*]?*Guid) callconv(.C) HRESULT,
-        GetRuntimeClassName: *const fn (self: *const anyopaque, className: ?*?HSTRING) callconv(.C) HRESULT,
-        GetTrustLevel: *const fn (self: *const anyopaque, trustLevel: ?*TrustLevel) callconv(.C) HRESULT,
-
+    pub const VTable = Implements(.{ IInspectable.VTable }, struct {
         GetColorValue: *const fn (*const anyopaque, UIColorType, *Color) callconv(.C) HRESULT,
         ColorValuesChanged: *const fn (*const anyopaque, *ITypedEventHandler, *i64) callconv(.C) HRESULT,
         RemoveColorValuesChanged: *const fn (*const anyopaque, i64) callconv(.C) HRESULT,
-    };
+    });
 };
 
 pub const IUISettings4 = extern struct {
     vtable: *const VTable,
 
+    pub usingnamespace IInspectable.Mixins(@This());
+
     pub const GUID: []const u8 = "52bb3002-919b-4d6b-9b78-8dd66ff4b93b";
     pub const IID: Guid = Guid.initString(GUID);
-    pub const SIGNATURE: []const u8 = std.fmt.comptimePrint("{{{s}}}", .{ GUID });
+    pub const SIGNATURE: []const u8 = Signature.interface(GUID);
 
-    pub const VTable = extern struct {
-        QueryInterface: *const fn (self: *const anyopaque, riid: *const Guid, ppvObject: **anyopaque) callconv(.C) HRESULT,
-        AddRef: *const fn (self: *const anyopaque) callconv(.C) u32,
-        Release: *const fn (self: *const anyopaque) callconv(.C) u32,
-
-        GetIids: *const fn (self: *const anyopaque, iidCount: ?*u32, iids: [*]?*Guid) callconv(.C) HRESULT,
-        GetRuntimeClassName: *const fn (self: *const anyopaque, className: ?*?HSTRING) callconv(.C) HRESULT,
-        GetTrustLevel: *const fn (self: *const anyopaque, trustLevel: ?*TrustLevel) callconv(.C) HRESULT,
-
+    pub const VTable = Implements(.{ IInspectable.VTable }, struct {
         AdvancedEffectsEnabled: *const fn (*const anyopaque, *bool) callconv(.C) HRESULT,
         AdvancedEffectsEnabledChanged: *const fn (*const anyopaque, *IInspectable, *i64) callconv(.C) HRESULT,
         RemoveAdvancedEffectsEnabledChanged: *const fn (*const anyopaque, i64) callconv(.C) HRESULT,
-    };
+    });
 };
 
 pub const IUISettings5 = extern struct {
     vtable: *const VTable,
 
+    pub usingnamespace IInspectable.Mixins(@This());
+
     pub const GUID: []const u8 = "5349d588-0cb5-5f05-bd34-706b3231f0bd";
     pub const IID: Guid = Guid.initString(GUID);
-    pub const SIGNATURE: []const u8 = std.fmt.comptimePrint("{{{s}}}", .{ GUID });
+    pub const SIGNATURE: []const u8 = Signature.interface(GUID);
 
-    pub const VTable = extern struct {
-        QueryInterface: *const fn (self: *const anyopaque, riid: *const Guid, ppvObject: **anyopaque) callconv(.C) HRESULT,
-        AddRef: *const fn (self: *const anyopaque) callconv(.C) u32,
-        Release: *const fn (self: *const anyopaque) callconv(.C) u32,
-
-        GetIids: *const fn (self: *const anyopaque, iidCount: ?*u32, iids: [*]?*Guid) callconv(.C) HRESULT,
-        GetRuntimeClassName: *const fn (self: *const anyopaque, className: ?*?HSTRING) callconv(.C) HRESULT,
-        GetTrustLevel: *const fn (self: *const anyopaque, trustLevel: ?*TrustLevel) callconv(.C) HRESULT,
-
+    pub const VTable = Implements(.{ IInspectable.VTable }, struct {
         AutoHideScrollBars: *const fn (*const anyopaque, *bool) callconv(.C) HRESULT,
         AutoHideScrollBarsChanged: *const fn (*const anyopaque, *IInspectable, *i64) callconv(.C) HRESULT,
         RemoveAutoHideScrollBarsChanged: *const fn (*const anyopaque, i64) callconv(.C) HRESULT,
-    };
+    });
 };
 
 pub const IUISettings6 = extern struct {
     vtable: *const VTable,
 
+    pub usingnamespace IInspectable.Mixins(@This());
+
     pub const GUID: []const u8 = "aef19bd7_fe31_5a04_ada4_469aaec6dfa9";
     pub const IID: Guid = Guid.initString(GUID);
-    pub const SIGNATURE: []const u8 = std.fmt.comptimePrint("{{{s}}}", .{ GUID });
+    pub const SIGNATURE: []const u8 = Signature.interface(GUID);
 
-    pub const VTable = extern struct {
-        QueryInterface: *const fn (self: *const anyopaque, riid: *const Guid, ppvObject: **anyopaque) callconv(.C) HRESULT,
-        AddRef: *const fn (self: *const anyopaque) callconv(.C) u32,
-        Release: *const fn (self: *const anyopaque) callconv(.C) u32,
-
-        GetIids: *const fn (self: *const anyopaque, iidCount: ?*u32, iids: [*]?*Guid) callconv(.C) HRESULT,
-        GetRuntimeClassName: *const fn (self: *const anyopaque, className: ?*?HSTRING) callconv(.C) HRESULT,
-        GetTrustLevel: *const fn (self: *const anyopaque, trustLevel: ?*TrustLevel) callconv(.C) HRESULT,
-
+    pub const VTable = Implements(.{ IInspectable.VTable }, struct {
         AnimationsEnabledChanged: *const fn (*const anyopaque, *IInspectable, *i64) callconv(.C) HRESULT,
         RemoveAnimationsEnabledChanged: *const fn (*const anyopaque, i64) callconv(.C) HRESULT,
         MessageDurationChanged: *const fn (*const anyopaque, *IInspectable, *i64) callconv(.C) HRESULT,
         RemoveMessageDurationChanged: *const fn (*const anyopaque, i64) callconv(.C) HRESULT,
-    };
+    });
 };
 
 pub const UISettings = extern struct {
-    pub const TYPE_NAME: []const u8 = "Windows.UI.ViewManagement.UISettings";
-    pub const SIGNATURE: []const u8 = std.fmt.comptimePrint("rc({s};{s})", .{ TYPE_NAME, IUISettings.SIGNATURE });
-
-    pub const RUNTIME_NAME: [:0]const u16 = std.unicode.utf8ToUtf16LeStringLiteral(TYPE_NAME);
-
-    var Factory: FactoryCache = .{};
-
     vtable: *const IUISettings.VTable,
+
+    pub usingnamespace IInspectable.Mixins(@This());
 
     pub fn init() anyerror!*@This() {
         const factory: *IGenericFactory = try @This().Factory.call(
@@ -224,24 +193,12 @@ pub const UISettings = extern struct {
         return @ptrCast(@alignCast(try factory.ActivateInstance(IUISettings)));
     }
 
-    pub fn deinit(self: *const @This()) void {
+    pub fn deinit(self: *@This()) void {
         _ = self.release();
     }
 
-    pub fn release(self: *const @This()) u32 {
-        return self.vtable.Release(@ptrCast(self));
-    }
-
-    fn query_interface(self: *const @This(), I: type) !*I {
-        var result: *anyopaque = undefined;
-        if (self.vtable.QueryInterface(@ptrCast(self), &I.IID, &result) < S_OK) {
-            return error.NoInterface;
-        }
-        return @ptrCast(@alignCast(result));
-    }
-
     pub fn getColorValue(self: *const @This(), color_type: UIColorType) !Color {
-        const this = try self.query_interface(IUISettings3);
+        const this = try self.queryInterface(IUISettings3);
 
         var color: Color = undefined;
         _ = this.vtable.GetColorValue(@ptrCast(this), color_type, &color);
@@ -249,7 +206,7 @@ pub const UISettings = extern struct {
     }
 
     pub fn colorValuesChanged(self: *const @This(), handler: *TypedEventHandler(UISettings, IInspectable)) !i64 {
-        const this = try self.query_interface(IUISettings3);
+        const this = try self.queryInterface(IUISettings3);
 
         var result: i64 = 0;
         if (this.vtable.ColorValuesChanged(@ptrCast(this), @ptrCast(handler), &result) < 0) {
@@ -259,9 +216,15 @@ pub const UISettings = extern struct {
     }
 
     pub fn removeColorValuesChanged(self: *const @This(), id: i64) !void {
-        const this = try self.query_interface(IUISettings3);
+        const this = try self.queryInterface(IUISettings3);
         if (this.vtable.RemoveColorValuesChanged(@ptrCast(this), id) < 0) {
             return error.UnbindHookFailure;
         }
     }
+
+    pub const TYPE_NAME: []const u8 = "Windows.UI.ViewManagement.UISettings";
+    pub const SIGNATURE: []const u8 = Signature.class(TYPE_NAME, IUISettings.SIGNATURE);
+    pub const RUNTIME_NAME: [:0]const u16 = std.unicode.utf8ToUtf16LeStringLiteral(TYPE_NAME);
+
+    var Factory: FactoryCache = .{};
 };

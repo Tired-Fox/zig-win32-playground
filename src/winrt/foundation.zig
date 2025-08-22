@@ -1,44 +1,18 @@
-pub const std = @import("std");
-pub const win32 = @import("win32");
-pub const winrt = @import("../winrt.zig");
+const std = @import("std");
+const core = @import("core.zig");
+const win32 = @import("win32");
+const winrt = @import("../winrt.zig");
 
-pub const Guid = win32.zig.Guid;
-pub const HRESULT = win32.foundation.HRESULT;
+const Guid = win32.zig.Guid;
+const HRESULT = win32.foundation.HRESULT;
+const Signature = core.Signature;
 
-pub const IID_IUnknown = win32.system.com.IID_IUnknown;
-pub const IID_IAgileObject = win32.system.com.IID_IAgileObject;
-pub const S_OK = winrt.S_OK;
-pub const E_NOINTERFACE = winrt.E_NOINTERFACE;
+const IID_IUnknown = win32.system.com.IID_IUnknown;
+const IID_IAgileObject = win32.system.com.IID_IAgileObject;
+const S_OK = winrt.S_OK;
+const E_NOINTERFACE = winrt.E_NOINTERFACE;
 
-/// Compute the GUID for a WinRT parameterized type from its canonical signature
-/// using the WinRT "pinterface" namespace and RFC-4122 UUIDv5 (SHA-1).
-///
-/// # Example
-/// + `pinterface({<PIID-of-open-generic>};<arg1-signature>;<arg2-signature>;...)`
-///   + `rc(Namespace.Type;{<IID-of-default-interface>})` is the signature for a runtime class type argument
-///   + `cinterface(IInspectable)` is the signature token for IInspectable
-fn guidFromWinRTSignature(signature: []const u8) Guid {
-    // WinRT "pinterface" namespace UUID in big-endian (RFC-4122 wire order):
-    // 11F47AD5-7B73-42C0-ABAE-878B1E16ADEE
-    const ns_be: [16]u8 = .{
-        0x11, 0xF4, 0x7A, 0xD5, 0x7B, 0x73, 0x42, 0xC0,
-        0xAB, 0xAE, 0x87, 0x8B, 0x1E, 0x16, 0xAD, 0xEE,
-    };
-
-    var hasher = std.crypto.hash.Sha1.init(.{});
-    hasher.update(&ns_be);
-    hasher.update(signature);
-
-    var digest: [20]u8 = undefined;
-    hasher.final(&digest);
-
-    var bytes = digest[0..16].*; // first 16 bytes
-    // RFC-4122 fixes:
-    bytes[6] = (bytes[6] & 0x0F) | 0x50; // version = 5
-    bytes[8] = (bytes[8] & 0x3F) | 0x80; // variant = RFC-4122
-
-    return Guid{ .Bytes = bytes };
-}
+pub const collections = @import("foundation/collections.zig");
 
 /// GUID values must be wire order when matching with GUID passed in from windows
 ///
@@ -57,23 +31,6 @@ pub fn wiredGuid(iid: *const Guid) Guid {
             bytes[12], bytes[13], bytes[14], bytes[15],
         },
     };
-}
-
-/// helper to format a GUID as dashed lowercase hex
-///
-/// Buffer must be 36+ bytes
-pub fn guidToString(g: *const Guid, buf: []u8) std.fmt.BufPrintError![]u8 {
-    const bytes = g.Bytes;
-    return try std.fmt.bufPrint(
-        buf,
-        "{X:0>2}{X:0>2}{X:0>2}{X:0>2}-{X:0>2}{X:0>2}-{X:0>2}{X:0>2}-{X:0>2}{X:0>2}-{X:0>2}{X:0>2}{X:0>2}{X:0>2}{X:0>2}{X:0>2}",
-        .{
-            bytes[0],  bytes[1],  bytes[2],  bytes[3],
-            bytes[4],  bytes[5],  bytes[6],  bytes[7],
-            bytes[8],  bytes[9],  bytes[10], bytes[11],
-            bytes[12], bytes[13], bytes[14], bytes[15],
-        },
-    );
 }
 
 // The type erased interface for a TypedEventHandler
@@ -112,15 +69,8 @@ pub const ITypedEventHandler = extern struct {
 /// This method handles delegating the invoked callback for a
 /// given typed event.
 pub fn TypedEventHandler(I: type, R: type) type {
-    const r_signature = if (@hasDecl(R, "SIGNATURE"))
-        @field(R, "SIGNATURE")
-    else blk: {
-        const idx = std.mem.lastIndexOf(u8, @typeName(R), ".");
-        break :blk std.fmt.comptimePrint("cinterface({s})", .{ if (idx) |i| @typeName(R)[i+|1..] else @typeName(R) });
-    };
-
-    const signature: []const u8 = std.fmt.comptimePrint("pinterface({{9de1c534-6ae1-11e0-84e1-18a905bcc53f}};{s};{s})", .{ I.SIGNATURE, r_signature });
-    const guid = guidFromWinRTSignature(signature);
+    const signature: []const u8 = Signature.pinterface("9de1c534-6ae1-11e0-84e1-18a905bcc53f", &.{ I.Signature, Signature.cinterface(R) });
+    const guid = Signature.guid(signature);
 
     return extern struct {
         const SIGNATURE = signature;
@@ -128,8 +78,8 @@ pub fn TypedEventHandler(I: type, R: type) type {
 
         // pub const IID: Guid = Guid.initString("9de1c534-6ae1-11e0-84e1-18a905bcc53f");
         pub const VTABLE = ITypedEventHandler.VTable{
-            .QueryInterface = query_interface,
-            .AddRef = add_ref,
+            .QueryInterface = queryInterface,
+            .AddRef = addRef,
             .Release = release,
             .Invoke = invoke,
         };
@@ -156,7 +106,7 @@ pub fn TypedEventHandler(I: type, R: type) type {
             };
         }
 
-        fn query_interface(self: *anyopaque, riid: *const Guid, out: *?*anyopaque) callconv(.C) HRESULT {
+        fn queryInterface(self: *anyopaque, riid: *const Guid, out: *?*anyopaque) callconv(.C) HRESULT {
             const me: *@This() = @ptrCast(@alignCast(self));
             // TODO: Handle IMarshal
             if (std.mem.eql(u8, &riid.Bytes, &wiredGuid(&IID).Bytes) or
@@ -164,14 +114,14 @@ pub fn TypedEventHandler(I: type, R: type) type {
                 std.mem.eql(u8, &riid.Bytes, &wiredGuid(IID_IAgileObject).Bytes))
             {
                 out.* = @as(?*anyopaque, @ptrCast(me));
-                _ = add_ref(self);
+                _ = addRef(self);
                 return S_OK;
             }
             out.* = null;
             return @bitCast(E_NOINTERFACE);
         }
 
-        fn add_ref(self: *anyopaque) callconv(.C) u32 {
+        fn addRef(self: *anyopaque) callconv(.C) u32 {
             const me: *@This() = @ptrCast(@alignCast(self));
             return me.refs.fetchAdd(1, .monotonic) + 1;
         }

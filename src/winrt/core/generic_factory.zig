@@ -1,11 +1,13 @@
-const super = @import("../../winrt.zig");
+const winrt = @import("../../winrt.zig");
 const win32 = @import("win32");
 
 pub const Guid = win32.zig.Guid;
 pub const HRESULT = win32.foundation.HRESULT;
 pub const IInspectable = win32.system.win_rt.IInspectable;
 
-pub const S_OK = super.S_OK;
+pub const FactoryCache = @import("factory_cache.zig").FactoryCache;
+
+pub const S_OK = winrt.S_OK;
 
 pub const IGenericFactory = extern struct {
     pub const VTable = extern struct { base: IInspectable.VTable, ActivateInstance: *const fn (*IGenericFactory, **anyopaque) callconv(.C) HRESULT };
