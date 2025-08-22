@@ -10,7 +10,7 @@ const HRESULT = win32.foundation.HRESULT;
 const HSTRING = win32.system.win_rt.HSTRING;
 const Implements = core.Implements;
 const IGenericFactory = core.IGenericFactory;
-const IInspectable = win32.system.win_rt.IInspectable;
+const IInspectable = winrt.IInspectable;
 const ITypedEventHandler = winrt.foundation.ITypedEventHandler;
 const TrustLevel = win32.system.win_rt.TrustLevel;
 const TypedEventHandler = winrt.foundation.TypedEventHandler;
@@ -197,7 +197,7 @@ pub const UISettings = extern struct {
         _ = self.release();
     }
 
-    pub fn getColorValue(self: *const @This(), color_type: UIColorType) !Color {
+    pub fn getColorValue(self: *@This(), color_type: UIColorType) !Color {
         const this = try self.queryInterface(IUISettings3);
 
         var color: Color = undefined;
@@ -205,7 +205,7 @@ pub const UISettings = extern struct {
         return color;
     }
 
-    pub fn colorValuesChanged(self: *const @This(), handler: *TypedEventHandler(UISettings, IInspectable)) !i64 {
+    pub fn colorValuesChanged(self: *@This(), handler: *TypedEventHandler(UISettings, IInspectable)) !i64 {
         const this = try self.queryInterface(IUISettings3);
 
         var result: i64 = 0;
@@ -215,7 +215,7 @@ pub const UISettings = extern struct {
         return result;
     }
 
-    pub fn removeColorValuesChanged(self: *const @This(), id: i64) !void {
+    pub fn removeColorValuesChanged(self: *@This(), id: i64) !void {
         const this = try self.queryInterface(IUISettings3);
         if (this.vtable.RemoveColorValuesChanged(@ptrCast(this), id) < 0) {
             return error.UnbindHookFailure;

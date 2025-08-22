@@ -7,7 +7,7 @@ const Guid = win32.zig.Guid;
 const HRESULT = win32.foundation.HRESULT;
 const Signature = core.Signature;
 
-const IID_IUnknown = win32.system.com.IID_IUnknown;
+const IUnknown = winrt.IUnknown;
 const IID_IAgileObject = win32.system.com.IID_IAgileObject;
 const S_OK = winrt.S_OK;
 const E_NOINTERFACE = winrt.E_NOINTERFACE;
@@ -69,14 +69,14 @@ pub const ITypedEventHandler = extern struct {
 /// This method handles delegating the invoked callback for a
 /// given typed event.
 pub fn TypedEventHandler(I: type, R: type) type {
-    const signature: []const u8 = Signature.pinterface("9de1c534-6ae1-11e0-84e1-18a905bcc53f", &.{ I.Signature, Signature.cinterface(R) });
-    const guid = Signature.guid(signature);
+    const signature: []const u8 = Signature.pinterface("9de1c534-6ae1-11e0-84e1-18a905bcc53f", &.{ I.SIGNATURE, Signature.cinterface(R) });
+    const iid = Signature.guid(signature);
 
     return extern struct {
         const SIGNATURE = signature;
-        const IID = guid;
+        const IID = iid;
+        const GUID = Signature.guid_string(iid);
 
-        // pub const IID: Guid = Guid.initString("9de1c534-6ae1-11e0-84e1-18a905bcc53f");
         pub const VTABLE = ITypedEventHandler.VTable{
             .QueryInterface = queryInterface,
             .AddRef = addRef,
@@ -110,7 +110,7 @@ pub fn TypedEventHandler(I: type, R: type) type {
             const me: *@This() = @ptrCast(@alignCast(self));
             // TODO: Handle IMarshal
             if (std.mem.eql(u8, &riid.Bytes, &wiredGuid(&IID).Bytes) or
-                std.mem.eql(u8, &riid.Bytes, &wiredGuid(IID_IUnknown).Bytes) or
+                std.mem.eql(u8, &riid.Bytes, &wiredGuid(&IUnknown.IID).Bytes) or
                 std.mem.eql(u8, &riid.Bytes, &wiredGuid(IID_IAgileObject).Bytes))
             {
                 out.* = @as(?*anyopaque, @ptrCast(me));

@@ -797,7 +797,7 @@ pub const XmlDocument = extern struct {
         return result;
     }
 
-    pub fn appendChild(self: *@This(), child: *IXmlNode) ?*IXmlNode {
+    pub fn appendChild(self: *@This(), child: *IXmlNode) !?*IXmlNode {
         const this: *IXmlNode = try self.queryInterface(IXmlNode);
         return this.appendChild(child);
     }

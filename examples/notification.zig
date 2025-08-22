@@ -14,18 +14,18 @@ pub fn main() !void {
     defer arena.deinit();
     const allocator = arena.allocator();
 
-    const album_cover = try relative_file_uri(allocator, "examples\\images\\album_cover.jpg");
-    const hoyo = try relative_file_uri(allocator, "examples\\images\\progress_logo.png");
+    const hero_uri = try relative_file_uri(allocator, "examples\\images\\hero.png");
+    const logo_uri = try relative_file_uri(allocator, "examples\\images\\logo.png");
     const button_appreciation = try relative_file_uri(allocator, "examples\\images\\button_appreciation.png");
     const button_read = try relative_file_uri(allocator, "examples\\images\\button_read.png");
 
     const notification = try Notification.send(std.heap.smp_allocator, null, "zig-test-notif", .{
-        .title = "Updating Genshin Impact",
-        .body = "Download and install the latest and jump back into the action",
-        .hero = .{ .src = album_cover, .alt = "Banner" },
+        .title = "Zig Powershell Based Notifications",
+        .body = "Some magic included to make powershell send a notification from zig",
+        .hero = .{ .src = hero_uri, .alt = "Banner" },
         .logo = .{
-            .src = hoyo,
-            .alt = "HoYo",
+            .src = logo_uri,
+            .alt = "Logo",
             .crop = true,
         },
         .progress = .{
@@ -34,13 +34,13 @@ pub fn main() !void {
         },
         .actions = &.{
             .Button(.{
-                .arguments = "https://www.rust-lang.org/",
+                .arguments = "https://ziglang.org/",
                 .activation_type = .protocol,
                 .image_uri = button_appreciation,
                 .hint_tool_tip = "Appreciation",
             }),
             .Button(.{
-                .arguments = "https://doc.rust-lang.org/book/",
+                .arguments = "https://ziglang.org/documentation/master/",
                 .activation_type = .protocol,
                 .image_uri = button_read,
                 .hint_tool_tip = "Read",

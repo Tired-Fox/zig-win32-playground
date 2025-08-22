@@ -89,7 +89,7 @@ pub const IInspectable = extern union {
 
     pub const GUID: []const u8 = "af86e2e0-b12d-4c6a-9c5a-d7aa65101e90";
     pub const IID: Guid = Guid.initString(GUID);
-    pub const SIGNATURE: []const u8 = "cinterface(iinspectable)";
+    pub const SIGNATURE: []const u8 = "cinterface(IInspectable)";
 
     pub const VTable = Implements(.{ IUnknown.VTable }, struct {
         GetIids: *const fn(self: *anyopaque, iidCount: *u32, iids: *[*]Guid) callconv(@import("std").os.windows.WINAPI) HRESULT,

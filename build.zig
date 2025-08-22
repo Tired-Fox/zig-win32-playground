@@ -11,7 +11,8 @@ const Example = struct {
 const examples = [_]Example {
     .{ .name = "reactive", .path = "examples/reactive_theme.zig",  },
     .{ .name = "notification", .path = "examples/notification.zig",  },
-    .{ .name = "winrt", .path = "examples/winrt.zig",  },
+    .{ .name = "notif", .path = "examples/winrt_notif.zig",  },
+    .{ .name = "uisettings", .path = "examples/winrt_uisettings.zig",  },
 };
 
 pub fn build(b: *std.Build) void {
