@@ -158,10 +158,6 @@ pub const IToastNotificationFactory = extern struct {
     pub const IID: Guid = Guid.initString(GUID);
     pub const SIGNATURE: []const u8 = std.fmt.comptimePrint("{{{s}}}", .{ GUID });
 
-    pub fn create_toast_notification(self: *@This(), xml: *XmlDocument) !*ToastNotification {
-
-    }
-
     pub const VTable = extern struct {
         // IUnknown
         QueryInterface: *const fn(self: *const anyopaque, riid:*const Guid, out:**anyopaque) callconv(.C) HRESULT,
@@ -177,53 +173,261 @@ pub const IToastNotificationFactory = extern struct {
     };
 };
 
-// // ToastNotifier (Show/Hide)
-// pub const IToastNotifierVTable = extern struct {
-//     // IInspectable
-//     QueryInterface: *const fn(*anyopaque, *const GUID, *?*anyopaque) callconv(.C) HRESULT,
-//     AddRef:         *const fn(*anyopaque) callconv(.C) u32,
-//     Release:        *const fn(*anyopaque) callconv(.C) u32,
-//     GetIids:             *const fn(*anyopaque, *u32, *?*GUID) callconv(.C) HRESULT,
-//     GetRuntimeClassName: *const fn(*anyopaque, *HSTRING) callconv(.C) HRESULT,
-//     GetTrustLevel:       *const fn(*anyopaque, *i32) callconv(.C) HRESULT,
-//
-//     Show: *const fn(self:*anyopaque, toast: *IToastNotification) callconv(.C) HRESULT,
-//     // Hide: *const fn(self:*anyopaque, toast: *IToastNotification) callconv(.C) HRESULT,
-// };
-// pub const IToastNotifier = extern struct { lpVtbl: *const IToastNotifierVTable; };
-//
-// const RC_ToastNotificationManager  = "Windows.UI.Notifications.ToastNotificationManager";
-// // ToastNotificationManager statics
-// // ToastNotificationManager is static → RoGetActivationFactory.
-// pub const IToastNotificationManagerStaticsVTable = extern struct {
-//     // IInspectable
-//     QueryInterface: *const fn(*anyopaque, *const GUID, *?*anyopaque) callconv(.C) HRESULT,
-//     AddRef:         *const fn(*anyopaque) callconv(.C) u32,
-//     Release:        *const fn(*anyopaque) callconv(.C) u32,
-//     GetIids:             *const fn(*anyopaque, *u32, *?*GUID) callconv(.C) HRESULT,
-//     GetRuntimeClassName: *const fn(*anyopaque, *HSTRING) callconv(.C) HRESULT,
-//     GetTrustLevel:       *const fn(*anyopaque, *i32) callconv(.C) HRESULT,
-//
-//     // For packaged apps: CreateToastNotifier(out)
-//     CreateToastNotifier: *const fn(self:*anyopaque, out: *?*IToastNotifier) callconv(.C) HRESULT,
-//
-//     // (Often also GetTemplateContent, etc. — add if you want)
-// };
-// pub const IToastNotificationManagerStatics = extern struct { lpVtbl: *const IToastNotificationManagerStaticsVTable; };
-//
-// // Desktop/unpackaged overload lives on *Statics2*: CreateToastNotifierWithId(appId, out)
-// pub const IToastNotificationManagerStatics2VTable = extern struct {
-//     // IInspectable
-//     QueryInterface: *const fn(*anyopaque, *const GUID, *?*anyopaque) callconv(.C) HRESULT,
-//     AddRef:         *const fn(*anyopaque) callconv(.C) u32,
-//     Release:        *const fn(*anyopaque) callconv(.C) u32,
-//     GetIids:             *const fn(*anyopaque, *u32, *?*GUID) callconv(.C) HRESULT,
-//     GetRuntimeClassName: *const fn(*anyopaque, *HSTRING) callconv(.C) HRESULT,
-//     GetTrustLevel:       *const fn(*anyopaque, *i32) callconv(.C) HRESULT,
-//
-//     CreateToastNotifierWithId: *const fn(self:*anyopaque, appId: HSTRING, out: *?*IToastNotifier) callconv(.C) HRESULT,
-// };
-// pub const IToastNotificationManagerStatics2 = extern struct { lpVtbl: *const IToastNotificationManagerStatics2VTable; };
+pub const IToastNotificationManagerStatics = extern struct {
+    vtable: *const VTable,
+
+    pub const GUID: []const u8 = "50ac103f-d235-4598-bbef-98fe4d1a3ad4";
+    pub const IID: Guid = Guid.initString(GUID);
+    pub const SIGNATURE: []const u8 = std.fmt.comptimePrint("{{{s}}}", .{ GUID });
+
+    pub const VTable = extern struct {
+        // IUnknown
+        QueryInterface: *const fn(self: *const anyopaque, riid:*const Guid, out:**anyopaque) callconv(.C) HRESULT,
+        AddRef:         *const fn(self: *const anyopaque) callconv(.C) u32,
+        Release:        *const fn(self: *const anyopaque) callconv(.C) u32,
+
+        // IInspectable
+        GetIids:             *const fn(self: *const anyopaque, count: *u32, iids: *?*Guid) callconv(.C) HRESULT,
+        GetRuntimeClassName: *const fn(self: *const anyopaque, s: *HSTRING) callconv(.C) HRESULT,
+        GetTrustLevel:       *const fn(self: *const anyopaque, trust: *i32) callconv(.C) HRESULT,
+
+        CreateToastNotifier: *const fn(*anyopaque, **ToastNotifier) callconv(.C) HRESULT,
+        CreateToastNotifierWithId: *const fn(*anyopaque, HSTRING, **ToastNotifier) callconv(.C) HRESULT,
+        GetTemplateContent: *const fn(*anyopaque, ToastTemplateType, **XmlDocument) callconv(.C) HRESULT,
+    };
+};
+
+pub const IToastNotificationManagerStatics2 = extern struct {
+    vtable: *const VTable,
+
+    pub const GUID: []const u8 = "7ab93c52-0e48-4750-ba9d-1a4113981847";
+    pub const IID: Guid = Guid.initString(GUID);
+    pub const SIGNATURE: []const u8 = std.fmt.comptimePrint("{{{s}}}", .{ GUID });
+
+    pub const VTable = extern struct {
+        // IUnknown
+        QueryInterface: *const fn(self: *const anyopaque, riid:*const Guid, out:**anyopaque) callconv(.C) HRESULT,
+        AddRef:         *const fn(self: *const anyopaque) callconv(.C) u32,
+        Release:        *const fn(self: *const anyopaque) callconv(.C) u32,
+
+        // IInspectable
+        GetIids:             *const fn(self: *const anyopaque, count: *u32, iids: *?*Guid) callconv(.C) HRESULT,
+        GetRuntimeClassName: *const fn(self: *const anyopaque, s: *HSTRING) callconv(.C) HRESULT,
+        GetTrustLevel:       *const fn(self: *const anyopaque, trust: *i32) callconv(.C) HRESULT,
+
+        // TODO: update the params to be the correct type
+        History: *const fn(*anyopaque, **anyopaque) callconv(.C) HRESULT,
+    };
+};
+
+pub const IToastNotificationManagerStatics4 = extern struct {
+    vtable: *const VTable,
+
+    pub const GUID: []const u8 = "8f993fd3-e516-45fb-8130-398e93fa52c3";
+    pub const IID: Guid = Guid.initString(GUID);
+    pub const SIGNATURE: []const u8 = std.fmt.comptimePrint("{{{s}}}", .{ GUID });
+
+    pub const VTable = extern struct {
+        // IUnknown
+        QueryInterface: *const fn(self: *const anyopaque, riid:*const Guid, out:**anyopaque) callconv(.C) HRESULT,
+        AddRef:         *const fn(self: *const anyopaque) callconv(.C) u32,
+        Release:        *const fn(self: *const anyopaque) callconv(.C) u32,
+
+        // IInspectable
+        GetIids:             *const fn(self: *const anyopaque, count: *u32, iids: *?*Guid) callconv(.C) HRESULT,
+        GetRuntimeClassName: *const fn(self: *const anyopaque, s: *HSTRING) callconv(.C) HRESULT,
+        GetTrustLevel:       *const fn(self: *const anyopaque, trust: *i32) callconv(.C) HRESULT,
+
+        // TODO: update the params to be the correct type
+        GetForUser: *const fn(*anyopaque, *anyopaque, **anyopaque) callconv(.C) HRESULT,
+        ConfigureNotificationMirroring: *const fn(*anyopaque, NotificationMirroring) callconv(.C) HRESULT,
+    };
+};
+
+pub const IToastNotificationManagerStatics5 = extern struct {
+    vtable: *const VTable,
+
+    pub const GUID: []const u8 = "d6f5f569-d40d-407c-8989-88cab42cfd14";
+    pub const IID: Guid = Guid.initString(GUID);
+    pub const SIGNATURE: []const u8 = std.fmt.comptimePrint("{{{s}}}", .{ GUID });
+
+    pub const VTable = extern struct {
+        // IUnknown
+        QueryInterface: *const fn(self: *const anyopaque, riid:*const Guid, out:**anyopaque) callconv(.C) HRESULT,
+        AddRef:         *const fn(self: *const anyopaque) callconv(.C) u32,
+        Release:        *const fn(self: *const anyopaque) callconv(.C) u32,
+
+        // IInspectable
+        GetIids:             *const fn(self: *const anyopaque, count: *u32, iids: *?*Guid) callconv(.C) HRESULT,
+        GetRuntimeClassName: *const fn(self: *const anyopaque, s: *HSTRING) callconv(.C) HRESULT,
+        GetTrustLevel:       *const fn(self: *const anyopaque, trust: *i32) callconv(.C) HRESULT,
+
+        // TODO: update the params to be the correct type
+        GetDefault: *const fn(*anyopaque, **anyopaque) callconv(.C) HRESULT,
+    };
+};
+
+pub const IToastNotifier = extern struct {
+    vtable: *const VTable,
+
+    pub const GUID: []const u8 = "75927b93-03f3-41ec-91d3-6e5bac1b38e7";
+    pub const IID: Guid = Guid.initString(GUID);
+    pub const SIGNATURE: []const u8 = std.fmt.comptimePrint("{{{s}}}", .{ GUID });
+
+    pub const VTable = extern struct {
+        // IUnknown
+        QueryInterface: *const fn(self: *const anyopaque, riid:*const Guid, out:**anyopaque) callconv(.C) HRESULT,
+        AddRef:         *const fn(self: *const anyopaque) callconv(.C) u32,
+        Release:        *const fn(self: *const anyopaque) callconv(.C) u32,
+
+        // IInspectable
+        GetIids:             *const fn(self: *const anyopaque, count: *u32, iids: *?*Guid) callconv(.C) HRESULT,
+        GetRuntimeClassName: *const fn(self: *const anyopaque, s: *HSTRING) callconv(.C) HRESULT,
+        GetTrustLevel:       *const fn(self: *const anyopaque, trust: *i32) callconv(.C) HRESULT,
+
+        // TODO: update the params to be the correct type
+        Show: *const fn(*anyopaque, *ToastNotification) callconv(.C) HRESULT,
+        Hide: *const fn(*anyopaque, *ToastNotification) callconv(.C) HRESULT,
+        Setting: *const fn(*anyopaque, *NotificationSetting) callconv(.C) HRESULT,
+        AddToSchedule: *const fn(*anyopaque, *anyopaque) callconv(.C) HRESULT,
+        RemoveFromSchedule: *const fn(*anyopaque, *anyopaque) callconv(.C) HRESULT,
+        GetScheduledToastNotifications: *const fn(*anyopaque, **anyopaque) callconv(.C) HRESULT,
+    };
+};
+
+pub const IToastNotifier2 = extern struct {
+    vtable: *const VTable,
+
+    pub const GUID: []const u8 = "354389c6-7c01-4bd5-9c20-604340cd2b74";
+    pub const IID: Guid = Guid.initString(GUID);
+    pub const SIGNATURE: []const u8 = std.fmt.comptimePrint("{{{s}}}", .{ GUID });
+
+    pub const VTable = extern struct {
+        // IUnknown
+        QueryInterface: *const fn(self: *const anyopaque, riid:*const Guid, out:**anyopaque) callconv(.C) HRESULT,
+        AddRef:         *const fn(self: *const anyopaque) callconv(.C) u32,
+        Release:        *const fn(self: *const anyopaque) callconv(.C) u32,
+
+        // IInspectable
+        GetIids:             *const fn(self: *const anyopaque, count: *u32, iids: *?*Guid) callconv(.C) HRESULT,
+        GetRuntimeClassName: *const fn(self: *const anyopaque, s: *HSTRING) callconv(.C) HRESULT,
+        GetTrustLevel:       *const fn(self: *const anyopaque, trust: *i32) callconv(.C) HRESULT,
+
+        // TODO: update the params to be the correct type
+        UpdateWithTagAndGroup: *const fn(*anyopaque, *anyopaque, *anyopaque, *anyopaque, *NotificationUpdateResult) callconv(.C) HRESULT,
+        UpdateWithTag: *const fn(*anyopaque, *anyopaque, *anyopaque, *NotificationUpdateResult) callconv(.C) HRESULT,
+    };
+};
+
+pub const IToastNotifier3 = extern struct {
+    vtable: *const VTable,
+
+    pub const GUID: []const u8 = "ae75a04a-3b0c-51ad-b7e8-b08ab6052549";
+    pub const IID: Guid = Guid.initString(GUID);
+    pub const SIGNATURE: []const u8 = std.fmt.comptimePrint("{{{s}}}", .{ GUID });
+
+    pub const VTable = extern struct {
+        // IUnknown
+        QueryInterface: *const fn(self: *const anyopaque, riid:*const Guid, out:**anyopaque) callconv(.C) HRESULT,
+        AddRef:         *const fn(self: *const anyopaque) callconv(.C) u32,
+        Release:        *const fn(self: *const anyopaque) callconv(.C) u32,
+
+        // IInspectable
+        GetIids:             *const fn(self: *const anyopaque, count: *u32, iids: *?*Guid) callconv(.C) HRESULT,
+        GetRuntimeClassName: *const fn(self: *const anyopaque, s: *HSTRING) callconv(.C) HRESULT,
+        GetTrustLevel:       *const fn(self: *const anyopaque, trust: *i32) callconv(.C) HRESULT,
+
+        // TODO: update the params to be the correct type
+        ScheduledToastNotificationShowing: *const fn(*anyopaque, *anyopaque, *i64) callconv(.C) HRESULT,
+        RemoveScheduledToastNotificationShowing: *const fn(*anyopaque, i64) callconv(.C) HRESULT,
+    };
+};
+
+pub const ToastNotifier = extern struct {
+    vtable: *const IToastNotifier.VTable,
+
+    const TYPE_NAME: []const u8 = "Windows.UI.Notifications.ToastNotifier";
+    const RUNTIME_NAME: [:0]const u16 = std.unicode.utf8ToUtf16LeStringLiteral();
+    const SIGNATURE: []const u8 = std.fmt.comptimePrint("rc({s};{s})", .{ TYPE_NAME, IToastNotifier.SIGNATURE });
+
+    fn query_interface(self: *@This(), I: type) !*I {
+        var result: *anyopaque = undefined;
+        if (self.vtable.QueryInterface(@ptrCast(self), &I.IID, &result) < S_OK) {
+            return error.NoInterface;
+        }
+        return @ptrCast(@alignCast(result));
+    }
+
+    pub fn show(self: *@This(), toast: *ToastNotification) !void {
+        if (self.vtable.Show(@ptrCast(self), toast) != S_OK) {
+            return error.ShowNotification;
+        }
+    }
+
+    pub fn hide(self: *@This(), toast: *ToastNotification) !void {
+        if (self.vtable.Hide(@ptrCast(self), toast) != S_OK) {
+            return error.HideNotification;
+        }
+    }
+
+    pub fn setting(self: *@This()) !NotificationSetting {
+        var result: NotificationSetting = undefined;
+        if (self.vtable.Setting(@ptrCast(self), &result) != S_OK) {
+            return error.GetNotificationSetting;
+        }
+        return result;
+    }
+};
+
+pub const ToastNotificationManager = extern struct {
+
+    const TYPE_NAME: []const u8 = "Windows.UI.Notifications.ToastNotificationManager";
+    const RUNTIME_NAME: [:0]const u16 = std.unicode.utf8ToUtf16LeStringLiteral();
+
+    var Factory: FactoryCache = .{};
+
+    pub fn create_toast_notifier() !*ToastNotifier {
+        const factory: *IToastNotificationManagerStatics = try @This().Factory.call(
+            IToastNotificationManagerStatics,
+            @This().RUNTIME_NAME,
+        );
+
+        var notifier: *ToastNotifier = undefined;
+        if (factory.vtable.CreateToastNotifier(@ptrCast(factory), &notifier) < S_OK ) {
+            return error.Notifier;
+        }
+
+        return notifier;
+    }
+
+    pub fn create_toast_notifier_with_id(id: HSTRING) !*ToastNotifier {
+        const factory: *IToastNotificationManagerStatics = try @This().Factory.call(
+            IToastNotificationManagerStatics,
+            @This().RUNTIME_NAME,
+        );
+
+        var notifier: *ToastNotifier = undefined;
+        if (factory.vtable.CreateToastNotifierWithId(@ptrCast(factory), id, &notifier) < S_OK ) {
+            return error.Notifier;
+        }
+
+        return notifier;
+    }
+
+    pub fn get_template_content(template: ToastTemplateType) !*XmlDocument {
+        const factory: *IToastNotificationManagerStatics = try @This().Factory.call(
+            IToastNotificationManagerStatics,
+            @This().RUNTIME_NAME,
+        );
+
+        var document: *XmlDocument = undefined;
+        if (factory.vtable.GetTemplateContent(@ptrCast(factory), template, &document) < S_OK ) {
+            return error.TemplateContent;
+        }
+
+        return document;
+    }
+};
 
 pub const ToastNotificationPriority = enum(i32) {
     default = 0,
@@ -235,6 +439,31 @@ pub const NotificationMirroring = enum(i32) {
     disabled = 1,
 };
 
+pub const ToastTemplateType = enum(i32) {
+    image_and_text_01 = 0,
+    image_and_text_02 = 1,
+    image_and_text_03 = 2,
+    image_and_text_04 = 3,
+    text_01 = 4,
+    text_02 = 5,
+    text_03 = 6,
+    text_04 = 7,
+};
+
+pub const NotificationUpdateResult = enum (i32) {
+    succeeded = 0,
+    failed = 1,
+    notification_not_found = 2,
+};
+
+pub const NotificationSetting = enum(i32) {
+    enabled = 0,
+    disabled_for_application = 1,
+    disabled_for_user = 2,
+    disabled_by_group_policy = 3,
+    disabled_by_manifest = 4,
+};
+
 pub const ToastNotification = extern struct {
     vtable: *IToastNotification.VTable,
 
@@ -243,15 +472,6 @@ pub const ToastNotification = extern struct {
     pub const RUNTIME_NAME: [:0]const u16 = std.unicode.utf8ToUtf16LeStringLiteral(TYPE_NAME);
 
     var Factory: FactoryCache = .{};
-
-    pub fn init() FactoryError!*@This() {
-        const inner: *IToastNotification = try @This().Factory.call(
-            IGenericFactory,
-            IToastNotification,
-            @This().RUNTIME_NAME,
-        );
-        return @ptrCast(@alignCast(inner));
-    }
 
     pub fn deinit(self: *const @This()) void {
         _ = self.release();
