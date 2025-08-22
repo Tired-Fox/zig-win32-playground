@@ -1,6 +1,5 @@
 const win32 = @import("win32");
 
-
 pub const S_OK: u32 = 0;
 pub const CO_E_NOTINITIALIZED: u32 = 0x800401F0;
 pub const CO_E_NOT_SUPPORTED: u32 = 0x80004021;

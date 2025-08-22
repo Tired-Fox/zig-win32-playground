@@ -380,9 +380,8 @@ pub const ToastNotifier = extern struct {
 };
 
 pub const ToastNotificationManager = extern struct {
-
     const TYPE_NAME: []const u8 = "Windows.UI.Notifications.ToastNotificationManager";
-    const RUNTIME_NAME: [:0]const u16 = std.unicode.utf8ToUtf16LeStringLiteral();
+    const RUNTIME_NAME: [:0]const u16 = std.unicode.utf8ToUtf16LeStringLiteral(TYPE_NAME);
 
     var Factory: FactoryCache = .{};
 
@@ -400,14 +399,17 @@ pub const ToastNotificationManager = extern struct {
         return notifier;
     }
 
-    pub fn create_toast_notifier_with_id(id: HSTRING) !*ToastNotifier {
+    pub fn create_toast_notifier_with_id(id: [:0]const u16) !*ToastNotifier {
         const factory: *IToastNotificationManagerStatics = try @This().Factory.call(
             IToastNotificationManagerStatics,
             @This().RUNTIME_NAME,
         );
 
+        const id_hstring: ?HSTRING = try winrt.WindowsCreateString(id);
+        defer winrt.WindowsDeleteString(id_hstring);
+
         var notifier: *ToastNotifier = undefined;
-        if (factory.vtable.CreateToastNotifierWithId(@ptrCast(factory), id, &notifier) < S_OK ) {
+        if (factory.vtable.CreateToastNotifierWithId(@ptrCast(factory), id_hstring.?, &notifier) < S_OK ) {
             return error.Notifier;
         }
 

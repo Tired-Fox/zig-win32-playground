@@ -167,10 +167,10 @@ pub const IXmlDocumentType = extern struct {
     };
 };
 
-pub const IXmlDomImplementation = extern struct {
+pub const IXmlNodeList = extern struct {
     vtable: *const VTable,
 
-    pub const GUID: []const u8 = "6de58132-f11d-4fbb-8cc6-583cba93112f";
+    pub const GUID: []const u8 = "8c60ad77-83a4-4ec1-9c54-7ba429e13da6";
     pub const IID: Guid = Guid.initString(GUID);
     pub const SIGNATURE: []const u8 = std.fmt.comptimePrint("{{{s}}}", .{ GUID });
 
@@ -185,9 +185,46 @@ pub const IXmlDomImplementation = extern struct {
         GetRuntimeClassName: *const fn(self: *anyopaque, s: *HSTRING) callconv(.C) HRESULT,
         GetTrustLevel:       *const fn(self: *anyopaque, trust: *i32) callconv(.C) HRESULT,
 
-        HasFeature: *const fn(*anyopaque, *anyopaque, *anyopaque, *bool) callconv(.C) HRESULT,
+        // TODO: Fix param types to be correct
+        Length: *const fn(*anyopaque, *u32) callconv(.C) HRESULT,
+        Item: *const fn(*anyopaque, u32, **anyopaque) callconv(.C) HRESULT,
     };
 };
+
+pub const IXmlNodeSelector = extern struct {
+    vtable: *const VTable,
+
+    pub const GUID: []const u8 = "63dbba8b-d0db-4fe1-b745-f9433afdc25b";
+    pub const IID: Guid = Guid.initString(GUID);
+    pub const SIGNATURE: []const u8 = std.fmt.comptimePrint("{{{s}}}", .{ GUID });
+
+    pub const VTable = extern struct {
+        // IUnknown
+        QueryInterface: *const fn(self: *anyopaque, riid:*const Guid, out:**anyopaque) callconv(.C) HRESULT,
+        AddRef:         *const fn(self: *anyopaque) callconv(.C) u32,
+        Release:        *const fn(self: *anyopaque) callconv(.C) u32,
+
+        // IInspectable
+        GetIids:             *const fn(self: *anyopaque, count: *u32, iids: *?*Guid) callconv(.C) HRESULT,
+        GetRuntimeClassName: *const fn(self: *anyopaque, s: *HSTRING) callconv(.C) HRESULT,
+        GetTrustLevel:       *const fn(self: *anyopaque, trust: *i32) callconv(.C) HRESULT,
+
+        // TODO: Fix param types to be correct
+        SelectSingleNode: *const fn(*anyopaque, *anyopaque, **anyopaque) callconv(.C) HRESULT,
+        SelectNodes: *const fn(*anyopaque, *anyopaque, **anyopaque) callconv(.C) HRESULT,
+        SelectSingleNodeNS: *const fn(*anyopaque, *anyopaque, *anyopaque, **anyopaque) callconv(.C) HRESULT,
+        SelectNodesNS: *const fn(*anyopaque, *anyopaque, *anyopaque, **anyopaque) callconv(.C) HRESULT,
+    };
+};
+
+// TODO: Implement
+// IXmlNode
+// IXmlNodeSerializer
+// IIterable
+// IIterator
+// IVectorView
+// XmlElement
+// XmlNodeList
 
 /// Represents an XML document. You can use this class to load, validate, edit, add, and position XML
 /// in a document.
@@ -227,6 +264,17 @@ pub const XmlDocument = extern struct {
         return self.vtable.Release(@ptrCast(self));
     }
 
+    pub fn load_xml(self: *@This(), xml: [:0]const u16) !void {
+        const xml_hstring: ?HSTRING = try winrt.WindowsCreateString(xml);
+        defer winrt.WindowsDeleteString(xml_hstring);
+
+        const instance = try self.query_interface(IXmlDocumentIO);
+        const code = instance.vtable.LoadXml(@ptrCast(instance), xml_hstring.?);
+        if (code < S_OK) {
+            return error.XmlException;
+        }
+    }
+
     pub fn create_element(self: *@This(), tagname: *HSTRING) !*anyopaque {
         var element: *anyopaque = undefined;
         if (self.vtable.CreateElement(@ptrCast(self), @ptrCast(tagname), &element) < S_OK) {
@@ -235,26 +283,18 @@ pub const XmlDocument = extern struct {
         return element;
     }
 
-    pub fn load_xml(self: *@This(), xml: HSTRING) !void {
-        const instance = try self.query_interface(IXmlDocumentIO);
-        const code = instance.vtable.LoadXml(@ptrCast(instance), xml);
-        if (code < S_OK) {
-            if (winrt.GetRestrictedErrorInfo()) |info| {
-                var result: HRESULT = 0;
-                var description: ?*u16 = undefined;
-                if (info.GetErrorDetails(&description, &result, null, null) == S_OK) {
-                    if (description) |d| {
-                        const message: [*:0]const u16 = @ptrCast(d);
-                        const m = std.unicode.utf16LeToUtf8Alloc(std.heap.smp_allocator, std.mem.sliceTo(message, 0)) catch unreachable;
-                        defer std.heap.smp_allocator.free(m);
-                        std.debug.print("[0x{X}] {s}\n", .{ result, m });
-                    } else {
-                        std.debug.print("[0x{X}]\n", .{ result });
-                    }
-                }
-            }
+    // CreateTextNode: *const fn(*anyopaque, *anyopaque, **anyopaque) callconv(.C) HRESULT,
+    pub fn create_text_node(self: *@This()) !void {
+        _ = self;
+    }
 
-            return error.XmlException;
-        }
+    // GetElementsByTagName: *const fn(*anyopaque, *anyopaque, **anyopaque) callconv(.C) HRESULT,
+    pub fn get_elements_by_tag_name(self: *@This()) !void {
+        _ = self;
+    }
+
+    // GetElementById: *const fn(*anyopaque, *anyopaque, **anyopaque) callconv(.C) HRESULT,
+    pub fn get_element_by_id(self: *@This()) !void {
+        _ = self;
     }
 };
